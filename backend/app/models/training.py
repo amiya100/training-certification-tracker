@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
 from datetime import datetime
 from ..database import Base
 
@@ -11,7 +12,8 @@ class Training(Base):
     status = Column(String(20), default="scheduled")
     start_date = Column(DateTime)
     end_date = Column(DateTime)
-    duration_hours = Column(Integer)
-    instructor_id = Column(Integer)
+    employee_id = Column(Integer, ForeignKey("employees.id"))  # employee attending the training
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    employee = relationship("Employee", back_populates="trainings")

@@ -2,25 +2,28 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
-# Base
+# Base schema
 class CertificationBase(BaseModel):
-    enrollment_id: int
+    employee_id: int
+    training_id: int
     cert_number: str
     expires_at: Optional[datetime] = None
     status: Optional[str] = "active"
     file_url: Optional[str] = None
 
-# Create
+# Create schema
 class CertificationCreate(CertificationBase):
     pass
 
-# Update
+# Update schema
 class CertificationUpdate(BaseModel):
-    expires_at: Optional[datetime] = None
-    status: Optional[str] = None
-    file_url: Optional[str] = None
+    employee_id: Optional[int]
+    training_id: Optional[int]
+    expires_at: Optional[datetime]
+    status: Optional[str]
+    file_url: Optional[str]
 
-# Response
+# Response schema
 class Certification(CertificationBase):
     id: int
     issued_date: datetime

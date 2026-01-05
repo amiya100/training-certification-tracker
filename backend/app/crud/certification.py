@@ -28,7 +28,8 @@ class CRUDCertification:
         db_obj: Certification,
         obj_in: CertificationUpdate
     ) -> Certification:
-        for field, value in obj_in.model_dump(exclude_unset=True).items():
+        data = obj_in.model_dump(exclude_unset=True)
+        for field, value in data.items():
             setattr(db_obj, field, value)
         db.commit()
         db.refresh(db_obj)

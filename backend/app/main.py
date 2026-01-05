@@ -1,40 +1,25 @@
-# main.py
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from app.database import engine, Base  # Use correct import path
-from app.routes import (
-    employee_router,
-    department_router,
-    training_router,
-    enrollment_router,
-    certification_router,
-    dashboard_router
-)
+from app.database import engine, Base
+
+from app.routes.employees import router as employee_router
+from app.routes.departments import router as department_router
+from app.routes.trainings import router as training_router
+from app.routes.certifications import router as certification_router
+
 app = FastAPI(title="Training & Certification Tracker")
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"], 
-)
+# Create DB tables
+Base.metadata.create_all(bind=engine)
 
+# Include routers
 app.include_router(employee_router)
 app.include_router(department_router)
 app.include_router(training_router)
-app.include_router(enrollment_router)
 app.include_router(certification_router)
-
-app.include_router(dashboard_router)
-
-# Test: create tables (will do nothing if none defined yet)
-Base.metadata.create_all(bind=engine)
 
 @app.get("/")
 def root():
-    return {"message": "FastAPI + SQLAlchemy connected to Aiven MySQL successfully!"}
+    return {"message": "Training & Certification Tracker API running"}
 
 @app.get("/health")
 def health_check():
