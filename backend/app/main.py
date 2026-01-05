@@ -1,6 +1,13 @@
 from fastapi import FastAPI
 from app.database import engine, Base  # Use correct import path
-from backend.app.routes.employees import employee_router,department_router,training_router,enrollment_router,certification_router
+#from backend.app.routes.employees import employee_router,department_router,training_router,enrollment_router,certification_router
+from app.routes import (
+    employee_router,
+    department_router,
+    training_router,
+    enrollment_router,
+    certification_router,
+)
 app = FastAPI(title="Training & Certification Tracker")
 
 # Test: create tables (will do nothing if none defined yet)
