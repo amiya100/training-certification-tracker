@@ -11,6 +11,7 @@ class Training(Base):
     status = Column(String(20), default="scheduled")
     start_date = Column(DateTime)
     end_date = Column(DateTime)
+    duration_hours = Column(Integer)
     instructor_id = Column(Integer)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -16,9 +16,9 @@ class CertificationCreate(CertificationBase):
 
 # Update
 class CertificationUpdate(BaseModel):
-    expires_at: Optional[datetime]
-    status: Optional[str]
-    file_url: Optional[str]
+    expires_at: Optional[datetime] = None
+    status: Optional[str] = None
+    file_url: Optional[str] = None
 
 # Response
 class Certification(CertificationBase):

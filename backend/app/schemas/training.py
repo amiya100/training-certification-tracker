@@ -9,6 +9,7 @@ class TrainingBase(BaseModel):
     status: Optional[str] = "scheduled"
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
+    duration_hours: Optional[int] = None 
     instructor_id: Optional[int] = None
 
 # Create
@@ -22,6 +23,7 @@ class TrainingUpdate(BaseModel):
     status: Optional[str]
     start_date: Optional[datetime]
     end_date: Optional[datetime]
+    duration_hours: Optional[int] = None 
     instructor_id: Optional[int]
 
 # Response
