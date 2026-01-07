@@ -2,29 +2,22 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
-# Base schema
 class TrainingBase(BaseModel):
     name: str = Field(..., max_length=200)
     description: Optional[str] = None
-    status: Optional[str] = "scheduled"
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
-    employee_id: Optional[int] = None  # the employee attending
+    duration_hours: Optional[float] = Field(0.0, ge=0)
 
-# Create schema
 class TrainingCreate(TrainingBase):
     pass
 
-# Update schema
 class TrainingUpdate(BaseModel):
-    name: Optional[str]
-    description: Optional[str]
-    status: Optional[str]
-    start_date: Optional[datetime]
-    end_date: Optional[datetime]
-    employee_id: Optional[int]
+    name: Optional[str] = None
+    description: Optional[str] = None
+    duration_hours: Optional[float] = Field(None, ge=0)
 
-# Response schema
+    class Config:
+        extra = "forbid"
+
 class Training(TrainingBase):
     id: int
     created_at: datetime

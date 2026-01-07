@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from typing import List, Optional
 from ..database import get_db
 from ..crud import training as crud_training
 from ..schemas.training import Training, TrainingCreate, TrainingUpdate, TrainingList
@@ -11,9 +12,20 @@ def create_training(training: TrainingCreate, db: Session = Depends(get_db)):
     return crud_training.create(db, obj_in=training)
 
 @router.get("/", response_model=TrainingList)
-def read_trainings(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    items = crud_training.get_multi(db, skip, limit)
-    total = crud_training.get_total_count(db)
+def read_trainings(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    name: Optional[str] = Query(None, description="Search by name"),
+    db: Session = Depends(get_db)
+):
+    if name:
+        items = crud_training.search_by_name(db, name)
+        total = len(items)
+        items = items[skip:skip+limit]
+    else:
+        items = crud_training.get_multi(db, skip, limit)
+        total = crud_training.get_total_count(db)
+    
     return TrainingList(trainings=items, total=total, skip=skip, limit=limit)
 
 @router.get("/{training_id}", response_model=Training)
@@ -22,6 +34,12 @@ def read_training(training_id: int, db: Session = Depends(get_db)):
     if not obj:
         raise HTTPException(404, "Training not found")
     return obj
+
+@router.get("/{training_id}/enrollments", response_model=List[dict])
+def get_training_enrollments(training_id: int, db: Session = Depends(get_db)):
+    from ..crud import enrollment as crud_enrollment
+    enrollments = crud_enrollment.get_by_training(db, training_id)
+    return [{"id": e.id, "employee_id": e.employee_id, "status": e.status} for e in enrollments]
 
 @router.put("/{training_id}", response_model=Training)
 def update_training(training_id: int, training_update: TrainingUpdate, db: Session = Depends(get_db)):

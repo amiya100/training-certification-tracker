@@ -6,7 +6,6 @@ from ..models.training import Training
 from ..schemas.training import TrainingCreate, TrainingUpdate
 
 class CRUDTraining:
-
     def get(self, db: Session, id: int) -> Optional[Training]:
         return db.query(Training).filter(Training.id == id).first()
 
@@ -17,19 +16,13 @@ class CRUDTraining:
         return db.query(Training).count()
 
     def create(self, db: Session, *, obj_in: TrainingCreate) -> Training:
-        obj = Training(**obj_in.model_dump())
-        db.add(obj)
+        db_obj = Training(**obj_in.model_dump())
+        db.add(db_obj)
         db.commit()
-        db.refresh(obj)
-        return obj
+        db.refresh(db_obj)
+        return db_obj
 
-    def update(
-        self,
-        db: Session,
-        *,
-        db_obj: Training,
-        obj_in: TrainingUpdate
-    ) -> Training:
+    def update(self, db: Session, *, db_obj: Training, obj_in: TrainingUpdate) -> Training:
         data = obj_in.model_dump(exclude_unset=True)
         if data:
             db_obj.updated_at = datetime.utcnow()
@@ -46,17 +39,7 @@ class CRUDTraining:
             db.commit()
         return obj
 
-    def get_by_status(self, db: Session, status: str) -> List[Training]:
-        return db.query(Training).filter(Training.status == status).all()
-
-    def get_active_trainings(self, db: Session) -> List[Training]:
-        return db.query(Training).filter(
-            Training.status.in_(["active", "scheduled"])
-        ).all()
-
     def search_by_name(self, db: Session, name: str) -> List[Training]:
-        return db.query(Training).filter(
-            Training.name.ilike(f"%{name}%")
-        ).all()
+        return db.query(Training).filter(Training.name.ilike(f"%{name}%")).all()
 
 training = CRUDTraining()
