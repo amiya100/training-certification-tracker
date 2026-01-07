@@ -1,27 +1,10 @@
+// HRMetricsRow.tsx
 import React from "react";
-
-interface Item {
-    id: string;
-    avatarUrl?: string;
-    name: string;
-    role?: string;
-    status?: string;
-    statusColor?: string;
-    employeeCount?: number;
-    trainingCount?: number;
-    departmentName?: string;
-    icon?: string;
-}
-
-interface HRMetricsData {
-    employees: Item[];
-    trainings: Item[];
-    departments: Item[];
-}
+import { type HRItem } from "../types/employee";
+import { type HRMetricsData } from "../types/hr";
 
 interface HRMetricsRowProps {
     data?: HRMetricsData;
-    title?: string;
     loading?: boolean;
     error?: string | null;
     onViewAll?: (type: string) => void;
@@ -34,7 +17,6 @@ const HRMetricsRow: React.FC<HRMetricsRowProps> = ({
         trainings: [],
         departments: [],
     },
-    title = "Training & Management",
     loading = false,
     error = null,
     onViewAll,
@@ -51,7 +33,7 @@ const HRMetricsRow: React.FC<HRMetricsRowProps> = ({
 
     const renderCard = (
         title: string,
-        items: Item[],
+        items: HRItem[],
         type: string,
         emptyMessage: string = "No data available"
     ) => {

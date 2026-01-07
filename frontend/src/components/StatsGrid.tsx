@@ -1,4 +1,5 @@
 import React from "react";
+import { type DashboardStats } from "../types/dashboard";
 
 interface StatCardProps {
     title: string;
@@ -68,35 +69,6 @@ const StatCard: React.FC<StatCardProps> = ({
         </div>
     );
 };
-
-interface DashboardStats {
-    // employees / departments
-    total_employees: number;
-    total_departments: number;
-    employee_growth_percentage: number;
-
-    // trainings (training programs)
-    total_trainings: number;
-    training_growth_percentage: number;
-
-    // enrollments (employee assignments to trainings)
-    active_enrollments: number;
-    enrollment_growth_percentage: number;
-
-    // certifications
-    total_certifications: number;
-    expiring_certifications: number;
-    expiring_change_percentage: number;
-    certification_growth_percentage: number;
-
-    // completion rate
-    completion_rate: number;
-    completion_change_percentage: number;
-
-    // training hours
-    total_training_hours: number;
-    training_hours_growth_percentage: number;
-}
 
 interface StatsGridProps {
     statsData?: DashboardStats;

@@ -1,199 +1,101 @@
+// WelcomeSection.tsx - Fixed version
 import React, { useState } from "react";
-import AddEmployeePopup from "./AddEmployeePopup";
-import AddTrainingPopup from "./AddTrainingPopup";
-import AddDepartmentPopup from "./AddDepartmentPopup";
-import ToastContainer, {
-    type ToastMessage,
-} from "../components/ToastContainer";
-import { type EmployeeFormData, type Department } from "../types/employee";
+import { useToast } from "../hooks/useToast";
+import { apiService } from "../services/api";
+import AddEmployeePopup from "./Popups/AddEmployeePopup";
+import AddTrainingPopup from "./Popups/AddTrainingPopup";
+import AddDepartmentPopup from "./Popups/AddDepartmentPopup";
+import ToastContainer from "./ToastContainer";
+import { type EmployeeFormData } from "../types/employee";
+import { type Department, type DepartmentFormData } from "../types/department";
 import { type TrainingFormData } from "../types/training";
 
-interface DepartmentFormData {
-    name: string;
-    description: string;
+interface WelcomeSectionProps {
+    departments: Department[];
+    onRefreshDashboard?: () => void;
 }
 
-const WelcomeSection: React.FC<{
-    departments?: Department[];
-    onRefreshDashboard?: () => void;
-}> = ({ departments = [], onRefreshDashboard }) => {
+const WelcomeSection: React.FC<WelcomeSectionProps> = ({
+    departments = [],
+    onRefreshDashboard,
+}) => {
     const [showAddEmployee, setShowAddEmployee] = useState(false);
     const [showAddTraining, setShowAddTraining] = useState(false);
     const [showAddDepartment, setShowAddDepartment] = useState(false);
-    const [toasts, setToasts] = useState<ToastMessage[]>([]);
+    const { toasts, addToast, removeToast } = useToast();
 
-    // Helper function to add toast
-    const addToast = (message: string, type: ToastMessage["type"]) => {
-        const id = Date.now().toString();
-        setToasts((prev) => [...prev, { id, message, type }]);
-
-        // Auto-remove toast after 5 seconds
-        setTimeout(() => {
-            removeToast(id);
-        }, 5000);
-    };
-
-    // Helper function to remove toast
-    const removeToast = (id: string) => {
-        setToasts((prev) => prev.filter((toast) => toast.id !== id));
-    };
-
-    const handleSaveEmployee = async (employeeData: EmployeeFormData) => {
+    // Employee handler - returns Promise<void>
+    const handleSaveEmployee = async (
+        employeeData: EmployeeFormData
+    ): Promise<void> => {
         try {
-            const submitData = {
+            await apiService.createEmployee({
                 ...employeeData,
                 is_active: true,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
-            };
-
-            console.log("Submitting employee data:", submitData);
-
-            const response = await fetch("http://localhost:8000/employees", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(submitData),
             });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(
-                    `Failed to save employee: ${response.status} - ${errorText}`
-                );
-            }
-
-            const result = await response.json();
-            console.log("Employee saved successfully:", result);
-
-            // Close modal
             setShowAddEmployee(false);
-
-            // Show success toast
             addToast("Employee added successfully!", "success");
-
-            // Notify parent Dashboard to refresh all data
             onRefreshDashboard?.();
         } catch (error) {
-            console.error("Error saving employee:", error);
-
-            // Show error toast
-            const errorMessage =
+            const message =
                 error instanceof Error
                     ? error.message
-                    : "Failed to add employee. Please try again.";
-
-            addToast(errorMessage, "error");
-
-            // Re-throw the error for the popup to handle
-            throw error;
+                    : "Failed to add employee";
+            addToast(message, "error");
+            throw error; // Re-throw so the popup can handle validation
         }
     };
 
-    const handleSaveTraining = async (trainingData: TrainingFormData) => {
+    // Training handler - returns Promise<void>
+    const handleSaveTraining = async (
+        trainingData: TrainingFormData
+    ): Promise<void> => {
         try {
-            // Prepare the data for submission
-            const submitData = {
+            await apiService.createTraining({
                 ...trainingData,
                 duration_hours: Number(trainingData.duration_hours),
+                is_active: true,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
-            };
-
-            console.log("Submitting training data:", submitData);
-
-            const response = await fetch("http://localhost:8000/trainings", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(submitData),
             });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(
-                    `Failed to save training: ${response.status} - ${errorText}`
-                );
-            }
-
-            const result = await response.json();
-            console.log("Training saved successfully:", result);
-
-            // Close modal
             setShowAddTraining(false);
-
-            // Show success toast
             addToast("Training program added successfully!", "success");
-
-            // Notify parent Dashboard to refresh all data
             onRefreshDashboard?.();
         } catch (error) {
-            console.error("Error saving training:", error);
-
-            // Show error toast
-            const errorMessage =
+            const message =
                 error instanceof Error
                     ? error.message
-                    : "Failed to add training program. Please try again.";
-
-            addToast(errorMessage, "error");
-
-            // Re-throw the error for the popup to handle
-            throw error;
+                    : "Failed to add training program";
+            addToast(message, "error");
+            throw error; // Re-throw so the popup can handle validation
         }
     };
 
-    const handleSaveDepartment = async (departmentData: DepartmentFormData) => {
+    // Department handler - returns Promise<void>
+    const handleSaveDepartment = async (
+        departmentData: DepartmentFormData
+    ): Promise<void> => {
         try {
-            const submitData = {
+            await apiService.createDepartment({
                 ...departmentData,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
-            };
-
-            console.log("Submitting department data:", submitData);
-
-            const response = await fetch("http://localhost:8000/departments", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(submitData),
             });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(
-                    `Failed to save department: ${response.status} - ${errorText}`
-                );
-            }
-
-            const result = await response.json();
-            console.log("Department saved successfully:", result);
-
-            // Close modal
             setShowAddDepartment(false);
-
-            // Show success toast
             addToast("Department added successfully!", "success");
-
-            // Notify parent Dashboard to refresh all data
             onRefreshDashboard?.();
         } catch (error) {
-            console.error("Error saving department:", error);
-
-            // Show error toast
-            const errorMessage =
+            const message =
                 error instanceof Error
                     ? error.message
-                    : "Failed to add department. Please try again.";
-
-            addToast(errorMessage, "error");
-
-            // Re-throw the error for the popup to handle
-            throw error;
+                    : "Failed to add department";
+            addToast(message, "error");
+            throw error; // Re-throw so the popup can handle validation
         }
     };
 
@@ -305,6 +207,7 @@ const WelcomeSection: React.FC<{
                 </div>
             </div>
 
+            {/* Popups - handlers now return Promise<void> */}
             <AddEmployeePopup
                 isOpen={showAddEmployee}
                 onClose={() => setShowAddEmployee(false)}
@@ -324,7 +227,6 @@ const WelcomeSection: React.FC<{
                 onSave={handleSaveDepartment}
             />
 
-            {/* Toast Container */}
             <ToastContainer toasts={toasts} onRemove={removeToast} />
         </>
     );

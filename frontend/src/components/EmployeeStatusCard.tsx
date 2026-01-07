@@ -1,25 +1,9 @@
+// EmployeeStatusCard.tsx
 import React from "react";
-
-interface DistributionItem {
-    label: string;
-    count: number;
-    percent: number;
-    color: string;
-}
-
-interface TopPerformer {
-    name: string;
-    role: string;
-    performance: number;
-    avatarUrl?: string;
-}
+import { type EmployeeStatusData } from "../types/employee";
 
 interface EmployeeStatusCardProps {
-    data?: {
-        totalEmployees: number;
-        distribution: DistributionItem[];
-        topPerformer: TopPerformer;
-    };
+    data?: EmployeeStatusData;
     periodLabel?: string;
     loading?: boolean;
     error?: string | null;

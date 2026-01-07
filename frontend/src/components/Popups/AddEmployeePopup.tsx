@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { type EmployeeFormData, type Department } from "../types/employee";
+import { type EmployeeFormData } from "../../types/employee";
+import { type Department } from "../../types/department";
 
 interface AddEmployeePopupProps {
     isOpen: boolean;
@@ -69,18 +70,6 @@ const AddEmployeePopup: React.FC<AddEmployeePopupProps> = ({
         setLoading(true);
         try {
             await onSave(formData);
-
-            // Reset form on successful save
-            setFormData({
-                employee_id: "",
-                first_name: "",
-                last_name: "",
-                email: "",
-                department_id: null,
-                position: "",
-                hire_date: new Date().toISOString().split("T")[0],
-            });
-            setErrors({});
         } catch (error) {
             console.error("Error saving employee:", error);
             // You could set a general error message here

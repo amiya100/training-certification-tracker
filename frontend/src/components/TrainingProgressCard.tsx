@@ -1,30 +1,15 @@
+// TrainingProgressCard.tsx
 import React, { useState } from "react";
-
-interface TrainingParticipant {
-    id: string;
-    name: string;
-    role: string;
-    avatarUrl?: string;
-    trainingName: string;
-    progress?: number; // Percentage
-    status: "enrolled" | "in_progress" | "completed" | "cancelled" | "overdue";
-    startDate?: string;
-    endDate?: string;
-    deadline?: string;
-    completionDate?: string;
-    hasCertification?: boolean;
-}
+import { type TrainingProgressItem } from "../types/enrollment";
 
 interface TrainingProgressCardProps {
-    data?: TrainingParticipant[];
+    data?: TrainingProgressItem[];
     periodLabel?: string;
     loading?: boolean;
     error?: string | null;
     onCreateEnrollment?: () => void;
     onViewAll?: () => void;
     onRetry?: () => void;
-    expandedParticipantId?: string | null;
-    onParticipantExpand?: (participantId: string | null) => void;
 }
 
 const TrainingProgressCard: React.FC<TrainingProgressCardProps> = ({
@@ -35,26 +20,11 @@ const TrainingProgressCard: React.FC<TrainingProgressCardProps> = ({
     onCreateEnrollment,
     onViewAll,
     onRetry,
-    expandedParticipantId = null,
-    onParticipantExpand,
 }) => {
-    // Use internal state if not controlled from parent
-    const [internalExpandedParticipant, setInternalExpandedParticipant] =
-        useState<string | null>(null);
-
-    // Use controlled state if provided, otherwise use internal state
-    const expandedParticipant =
-        expandedParticipantId !== undefined
-            ? expandedParticipantId
-            : internalExpandedParticipant;
-
-    const setExpandedParticipant = (participantId: string | null) => {
-        if (onParticipantExpand) {
-            onParticipantExpand(participantId);
-        } else {
-            setInternalExpandedParticipant(participantId);
-        }
-    };
+    // Simple internal state for expanded participant
+    const [expandedParticipant, setExpandedParticipant] = useState<
+        string | null
+    >(null);
 
     // Get status color - updated to match backend statuses
     const getStatusColor = (status: string, hasCertification?: boolean) => {

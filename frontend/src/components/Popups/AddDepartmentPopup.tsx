@@ -1,27 +1,21 @@
-// components/AddTrainingPopup.tsx
+// components/AddDepartmentPopup.tsx
 import React, { useState } from "react";
+import { type DepartmentFormData } from "../../types/department";
 
-interface TrainingFormData {
-    name: string;
-    description: string;
-    duration_hours: number | "";
-}
-
-interface AddTrainingPopupProps {
+interface AddDepartmentPopupProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (trainingData: TrainingFormData) => Promise<void>;
+    onSave: (departmentData: DepartmentFormData) => Promise<void>;
 }
 
-const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
+const AddDepartmentPopup: React.FC<AddDepartmentPopupProps> = ({
     isOpen,
     onClose,
     onSave,
 }) => {
-    const [formData, setFormData] = useState<TrainingFormData>({
+    const [formData, setFormData] = useState<DepartmentFormData>({
         name: "",
         description: "",
-        duration_hours: "",
     });
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -30,20 +24,11 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
         const newErrors: Record<string, string> = {};
 
         if (!formData.name.trim()) {
-            newErrors.name = "Training name is required";
+            newErrors.name = "Department name is required";
         }
 
         if (!formData.description.trim()) {
             newErrors.description = "Description is required";
-        }
-
-        if (formData.duration_hours === "" || formData.duration_hours === 0) {
-            newErrors.duration_hours = "Duration is required";
-        } else if (
-            typeof formData.duration_hours === "number" &&
-            formData.duration_hours < 0
-        ) {
-            newErrors.duration_hours = "Duration must be positive";
         }
 
         setErrors(newErrors);
@@ -60,16 +45,8 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
         setLoading(true);
         try {
             await onSave(formData);
-
-            // Reset form on successful save
-            setFormData({
-                name: "",
-                description: "",
-                duration_hours: "",
-            });
-            setErrors({});
         } catch (error) {
-            console.error("Error saving training:", error);
+            console.error("Error saving department:", error);
             // You could set a general error message here
         } finally {
             setLoading(false);
@@ -83,12 +60,7 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
 
         setFormData((prev) => ({
             ...prev,
-            [name]:
-                name === "duration_hours"
-                    ? value === ""
-                        ? ""
-                        : Number(value)
-                    : value,
+            [name]: value,
         }));
 
         // Clear error for this field when user starts typing
@@ -121,7 +93,7 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
                             <div className="p-5 border-b border-white/20">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center space-x-3">
-                                        <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-xl border border-white/30">
+                                        <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl flex items-center justify-center shadow-xl border border-white/30">
                                             <svg
                                                 width="20"
                                                 height="20"
@@ -131,21 +103,22 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
                                                 strokeWidth="2"
                                                 className="text-white drop-shadow-lg"
                                             >
-                                                <path d="M12 14l9-5-9-5-9 5 9 5z" />
-                                                <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222"
-                                                />
+                                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                <circle
+                                                    cx="9"
+                                                    cy="7"
+                                                    r="4"
+                                                ></circle>
+                                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                                             </svg>
                                         </div>
                                         <div>
                                             <h2 className="text-xl font-bold text-white drop-shadow-lg">
-                                                Add Training Program
+                                                Add Department
                                             </h2>
                                             <p className="text-xs text-gray-300">
-                                                Create a new training program
+                                                Create a new department
                                             </p>
                                         </div>
                                     </div>
@@ -184,10 +157,10 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
                                 onSubmit={handleSubmit}
                                 className="p-5 space-y-4"
                             >
-                                {/* Training Name */}
+                                {/* Department Name */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-200 mb-2 drop-shadow-lg">
-                                        Training Name *
+                                        Department Name *
                                     </label>
                                     <div className="relative">
                                         <input
@@ -199,8 +172,8 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
                                                 errors.name
                                                     ? "border-red-500/50"
                                                     : "border-white/20"
-                                            } rounded-xl px-3 py-2.5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-sm`}
-                                            placeholder="e.g., Python Programming Fundamentals"
+                                            } rounded-xl px-3 py-2.5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-sm`}
+                                            placeholder="e.g., Engineering, Marketing, HR"
                                         />
                                         {errors.name && (
                                             <p className="mt-1.5 text-xs text-red-400 flex items-center">
@@ -237,52 +210,6 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
                                     </div>
                                 </div>
 
-                                {/* Duration Hours */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-200 mb-2 drop-shadow-lg">
-                                        Duration (Hours) *
-                                    </label>
-                                    <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                                            <svg
-                                                width="16"
-                                                height="16"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                                className="text-gray-400"
-                                            >
-                                                <circle
-                                                    cx="12"
-                                                    cy="12"
-                                                    r="10"
-                                                />
-                                                <polyline points="12 6 12 12 16 14" />
-                                            </svg>
-                                        </div>
-                                        <input
-                                            type="number"
-                                            name="duration_hours"
-                                            value={formData.duration_hours}
-                                            onChange={handleChange}
-                                            step="0.5"
-                                            min="0"
-                                            className={`w-full bg-gray-700/30 backdrop-blur-sm border ${
-                                                errors.duration_hours
-                                                    ? "border-red-500/50"
-                                                    : "border-white/20"
-                                            } rounded-xl pl-10 pr-3 py-2.5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-sm`}
-                                            placeholder="e.g., 8.5"
-                                        />
-                                        {errors.duration_hours && (
-                                            <p className="mt-1.5 text-xs text-red-400">
-                                                {errors.duration_hours}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-
                                 {/* Description */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-200 mb-2 drop-shadow-lg">
@@ -298,8 +225,8 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
                                                 errors.description
                                                     ? "border-red-500/50"
                                                     : "border-white/20"
-                                            } rounded-xl px-3 py-2.5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-sm resize-none`}
-                                            placeholder="Provide a detailed description of the training program..."
+                                            } rounded-xl px-3 py-2.5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-sm resize-none`}
+                                            placeholder="Provide a detailed description of the department's purpose and responsibilities..."
                                         />
                                         {errors.description && (
                                             <p className="mt-1.5 text-xs text-red-400">
@@ -321,7 +248,7 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
                                     <button
                                         type="submit"
                                         disabled={loading}
-                                        className="flex-1 py-2.5 px-5 bg-gradient-to-r from-orange-500 to-orange-600 backdrop-blur-sm border border-orange-500/30 rounded-xl text-white hover:from-orange-600 hover:to-orange-700 transition-all duration-300 font-semibold shadow-xl hover:shadow-2xl hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-sm"
+                                        className="flex-1 py-2.5 px-5 bg-gradient-to-r from-purple-600 to-purple-700 backdrop-blur-sm border border-purple-500/30 rounded-xl text-white hover:from-purple-700 hover:to-purple-800 transition-all duration-300 font-semibold shadow-xl hover:shadow-2xl hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-sm"
                                     >
                                         {loading ? (
                                             <>
@@ -348,7 +275,7 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
                                                 Creating...
                                             </>
                                         ) : (
-                                            "Create Training"
+                                            "Create Department"
                                         )}
                                     </button>
                                 </div>
@@ -361,4 +288,4 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
     );
 };
 
-export default AddTrainingPopup;
+export default AddDepartmentPopup;

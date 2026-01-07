@@ -1,17 +1,94 @@
+// components/Header.tsx (with page icons)
 import React from "react";
-import { Settings, Bell } from "lucide-react";
+import {
+    Settings,
+    Bell,
+    BarChart,
+    Users,
+    BookOpen,
+    ClipboardList,
+    Award,
+} from "lucide-react";
+import { type MenuItemType } from "../App";
 
-const Header: React.FC = () => {
+interface HeaderProps {
+    activeMenuItem: MenuItemType;
+}
+
+const Header: React.FC<HeaderProps> = ({ activeMenuItem }) => {
+    const getPageConfig = () => {
+        switch (activeMenuItem) {
+            case "dashboard":
+                return {
+                    title: "HR Management Dashboard",
+                    description:
+                        "Overview of your training and certification programs",
+                    icon: <BarChart size={20} className="text-orange-400" />,
+                    notifications: 3,
+                };
+            case "employees":
+                return {
+                    title: "Employee Management",
+                    description:
+                        "Manage employee information, assignments, and departments",
+                    icon: <Users size={20} className="text-blue-400" />,
+                    notifications: 5,
+                };
+            case "trainings":
+                return {
+                    title: "Training Programs",
+                    description: "Create, manage, and track training programs",
+                    icon: <BookOpen size={20} className="text-emerald-400" />,
+                    notifications: 2,
+                };
+            case "enrollments":
+                return {
+                    title: "Training Enrollments",
+                    description:
+                        "Track and manage employee training enrollments",
+                    icon: (
+                        <ClipboardList size={20} className="text-purple-400" />
+                    ),
+                    notifications: 4,
+                };
+            case "certifications":
+                return {
+                    title: "Certifications Management",
+                    description:
+                        "View and manage employee certifications and expirations",
+                    icon: <Award size={20} className="text-yellow-400" />,
+                    notifications: 6,
+                };
+            default:
+                return {
+                    title: "HR Management Dashboard",
+                    description:
+                        "Overview of your training and certification programs",
+                    icon: <BarChart size={20} className="text-orange-400" />,
+                    notifications: 3,
+                };
+        }
+    };
+
+    const pageConfig = getPageConfig();
+
     return (
         <header className="bg-gradient-to-r from-transparent to-white/5 backdrop-blur-sm border-b border-white/20 px-5 py-3 shadow-2xl">
             <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-lg font-semibold text-white drop-shadow-lg">
-                        HR Management Dashboard
-                    </h2>
-                    <p className="text-xs text-gray-300 mt-0.5">
-                        Welcome to your workspace
-                    </p>
+                <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-gray-800/50 rounded-lg border border-white/10">
+                        {pageConfig.icon}
+                    </div>
+                    <div>
+                        <div className="flex items-center space-x-2">
+                            <h2 className="text-lg font-semibold text-white drop-shadow-lg">
+                                {pageConfig.title}
+                            </h2>
+                        </div>
+                        <p className="text-xs text-gray-300 mt-1">
+                            {pageConfig.description}
+                        </p>
+                    </div>
                 </div>
 
                 <div className="flex items-center space-x-4">
@@ -19,7 +96,7 @@ const Header: React.FC = () => {
                         <button className="p-1.5 bg-gray-700 backdrop-blur-sm rounded-lg border border-white/20 shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 relative group">
                             <Bell size={16} className="text-gray-200" />
                             <span className="absolute -top-1 -right-1 bg-blue-500 text-xs text-white rounded-full w-4 h-4 flex items-center justify-center shadow-lg ring-2 ring-blue-500/50 group-hover:scale-110 transition-transform duration-300 text-[10px]">
-                                3
+                                {pageConfig.notifications}
                             </span>
                         </button>
                         <button className="p-1.5 bg-gray-700 backdrop-blur-sm rounded-lg border border-white/20 shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300">
@@ -40,7 +117,9 @@ const Header: React.FC = () => {
                             <p className="text-sm font-medium text-white drop-shadow-lg">
                                 Alex Johnson
                             </p>
-                            <p className="text-xs text-gray-300">Admin</p>
+                            <p className="text-xs text-gray-300">
+                                HR Administrator
+                            </p>
                         </div>
                     </div>
                 </div>

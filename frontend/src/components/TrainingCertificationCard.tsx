@@ -1,20 +1,9 @@
+// TrainingCertificationCard.tsx
 import React from "react";
-
-interface CertificationStatus {
-    label: string;
-    percent: number;
-    color: string;
-    count: number;
-}
+import { type TrainingCertificationData } from "../types/training";
 
 interface TrainingCertificationCardProps {
-    data?: {
-        totalTrainings: number;
-        certificationStatuses: CertificationStatus[];
-        expiringSoonCount: number;
-        expiringAvatars: string[];
-        upcomingDeadlines: number;
-    };
+    data?: TrainingCertificationData;
     periodLabel?: string;
     loading?: boolean;
     error?: string | null;
@@ -41,12 +30,6 @@ const TrainingCertificationCard: React.FC<TrainingCertificationCardProps> = ({
     onViewDetails,
     onRetry,
 }) => {
-    // Calculate total percentage for the gauge
-    const totalPercent = data.certificationStatuses.reduce(
-        (sum, status) => sum + status.percent,
-        0
-    );
-
     // Generate conic gradient for certification status
     const conicStops = data.certificationStatuses
         .map((status, idx) => {

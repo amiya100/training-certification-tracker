@@ -1,15 +1,30 @@
-// src/types/training.ts
+// training.ts
+export interface Training {
+    id: number;
+    name: string;
+    description: string;
+    duration_hours: number;
+    category: string;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface TrainingFormData {
     name: string;
     description: string;
     duration_hours: number | "";
 }
 
-export interface Training {
-    id: number;
-    name: string;
-    description: string;
-    duration_hours: number;
-    created_at: string;
-    updated_at: string;
+export interface TrainingCertificationData {
+    totalTrainings: number;
+    certificationStatuses: Array<{
+        label: string;
+        percent: number;
+        color: string;
+        count: number;
+    }>;
+    expiringSoonCount: number;
+    expiringAvatars: string[];
+    upcomingDeadlines: number;
 }
