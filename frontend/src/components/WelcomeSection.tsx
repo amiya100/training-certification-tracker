@@ -29,17 +29,6 @@ const WelcomeSection: React.FC = () => {
                         <h2 className="text-xl font-bold text-white drop-shadow-lg">
                             Welcome Back, Adrian
                         </h2>
-                        <p className="text-gray-300 text-sm mt-1">
-                            You have{" "}
-                            <span className="text-orange-400 font-semibold drop-shadow-lg">
-                                21
-                            </span>{" "}
-                            Pending Approvals &{" "}
-                            <span className="text-orange-400 font-semibold drop-shadow-lg">
-                                14
-                            </span>{" "}
-                            Leave Requests
-                        </p>
                     </div>
                 </div>
                 <div className="flex space-x-3">

@@ -1,4 +1,3 @@
-# app/routes/employees.py
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -7,7 +6,6 @@ from ..crud import employee as crud_employee
 from ..schemas.employee import Employee, EmployeeCreate, EmployeeUpdate, EmployeeList
 
 router = APIRouter(prefix="/employees", tags=["employees"])
-
 
 @router.post("/", response_model=Employee, status_code=status.HTTP_201_CREATED)
 def create_employee(employee: EmployeeCreate, db: Session = Depends(get_db)):
@@ -29,19 +27,18 @@ def create_employee(employee: EmployeeCreate, db: Session = Depends(get_db)):
     
     return crud_employee.create(db, obj_in=employee)
 
-
 @router.get("/", response_model=EmployeeList)
 def read_employees(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
-    department: Optional[str] = Query(None, description="Filter by department"),
+    department_id: Optional[int] = Query(None, description="Filter by department ID"),  # Changed from department
     db: Session = Depends(get_db)
 ):
     employees = crud_employee.get_multi(
-        db, skip=skip, limit=limit, is_active=is_active, department=department
+        db, skip=skip, limit=limit, is_active=is_active, department_id=department_id  # Changed
     )
-    total = crud_employee.get_total_count(db, is_active=is_active, department=department)
+    total = crud_employee.get_total_count(db, is_active=is_active, department_id=department_id)  # Changed
     
     return EmployeeList(
         employees=employees,
@@ -49,7 +46,6 @@ def read_employees(
         skip=skip,
         limit=limit
     )
-
 
 @router.get("/{employee_id}", response_model=Employee)
 def read_employee(employee_id: int, db: Session = Depends(get_db)):
@@ -61,6 +57,17 @@ def read_employee(employee_id: int, db: Session = Depends(get_db)):
         )
     return db_employee
 
+@router.get("/{employee_id}/enrollments", response_model=List[dict])
+def get_employee_enrollments(employee_id: int, db: Session = Depends(get_db)):
+    from ..crud import enrollment as crud_enrollment
+    enrollments = crud_enrollment.get_by_employee(db, employee_id)
+    return [{"id": e.id, "training_id": e.training_id, "status": e.status} for e in enrollments]
+
+@router.get("/{employee_id}/certifications", response_model=List[dict])
+def get_employee_certifications(employee_id: int, db: Session = Depends(get_db)):
+    from ..crud import certification as crud_certification
+    certifications = crud_certification.get_by_employee(db, employee_id)
+    return [{"id": c.id, "cert_number": c.cert_number, "status": c.status, "expires_at": c.expires_at} for c in certifications]
 
 @router.put("/{employee_id}", response_model=Employee)
 def update_employee(
@@ -86,7 +93,6 @@ def update_employee(
     
     return crud_employee.update(db, db_obj=db_employee, obj_in=employee_update)
 
-
 @router.delete("/{employee_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_employee(employee_id: int, db: Session = Depends(get_db)):
     db_employee = crud_employee.remove(db, id=employee_id)
@@ -96,22 +102,3 @@ def delete_employee(employee_id: int, db: Session = Depends(get_db)):
             detail="Employee not found"
         )
     return None
-
-
-@router.get("/search/", response_model=List[Employee])
-def search_employees(
-    query: str = Query(..., min_length=1, description="Search term"),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
-    db: Session = Depends(get_db)
-):
-    # Simple search implementation
-    results = db.query(Employee).filter(
-        (Employee.first_name.ilike(f"%{query}%")) |
-        (Employee.last_name.ilike(f"%{query}%")) |
-        (Employee.email.ilike(f"%{query}%")) |
-        (Employee.employee_id.ilike(f"%{query}%")) |
-        (Employee.department.ilike(f"%{query}%"))
-    ).offset(skip).limit(limit).all()
-    
-    return results

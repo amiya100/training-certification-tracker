@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 
 interface StatCardProps {
     title: string;
@@ -69,295 +69,358 @@ const StatCard: React.FC<StatCardProps> = ({
     );
 };
 
-// Interface for API response
-interface ApiStatsResponse {
+interface DashboardStats {
+    // employees / departments
     total_employees: number;
-    total_trainings: number;
-    total_certifications: number;
-    active_enrollments: number;
     total_departments: number;
-    expiring_certifications: number;
-    completion_rate: number;
-    total_training_hours: number;
     employee_growth_percentage: number;
+
+    // trainings (training programs)
+    total_trainings: number;
+    training_growth_percentage: number;
+
+    // enrollments (employee assignments to trainings)
+    active_enrollments: number;
     enrollment_growth_percentage: number;
-    certification_growth_percentage: number;
+
+    // certifications
+    total_certifications: number;
+    expiring_certifications: number;
     expiring_change_percentage: number;
+    certification_growth_percentage: number;
+
+    // completion rate
+    completion_rate: number;
     completion_change_percentage: number;
+
+    // training hours
+    total_training_hours: number;
     training_hours_growth_percentage: number;
 }
 
-const StatsGrid: React.FC = () => {
-    const [stats, setStats] = useState<StatCardProps[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
+interface StatsGridProps {
+    statsData?: DashboardStats;
+    loading?: boolean;
+    error?: string | null;
+    onRetry?: () => void;
+}
 
-    useEffect(() => {
-        fetchStats();
+const StatsGrid: React.FC<StatsGridProps> = ({
+    statsData,
+    loading = false,
+    error = null,
+    onRetry,
+}) => {
+    // Transform stats data to StatCardProps format
+    const transformStatsToCards = (data: DashboardStats): StatCardProps[] => {
+        if (!data) return getDefaultStats();
 
-        // Refresh stats every 5 minutes
-        const interval = setInterval(fetchStats, 5 * 60 * 1000);
-
-        return () => clearInterval(interval);
-    }, []);
-
-    const fetchStats = async () => {
-        try {
-            setLoading(true);
-            const response = await fetch(
-                "http://localhost:8000/api/dashboard/stats"
-            );
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data: ApiStatsResponse = await response.json();
-
-            // Transform API data to stat cards
-            const transformedStats: StatCardProps[] = [
-                {
-                    title: "Total Employees",
-                    value: data.total_employees.toString(),
-                    change: `${
-                        data.employee_growth_percentage >= 0 ? "+" : ""
-                    }${data.employee_growth_percentage.toFixed(1)}%`,
-                    isPositive: data.employee_growth_percentage >= 0,
-                    bgColor: "bg-blue-500",
-                    icon: (
-                        <svg
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            className="text-white"
-                        >
-                            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-                            <circle cx="9" cy="7" r="4" />
-                            <path d="M23 21v-2a4 4 0 00-3-3.87" />
-                            <path d="M16 3.13a4 4 0 010 7.75" />
-                        </svg>
-                    ),
-                },
-                {
-                    title: "Active Trainings",
-                    value: data.total_trainings.toString(),
-                    change: `${
-                        data.certification_growth_percentage >= 0 ? "+" : ""
-                    }${data.certification_growth_percentage.toFixed(1)}%`,
-                    isPositive: data.certification_growth_percentage >= 0,
-                    bgColor: "bg-emerald-500",
-                    icon: (
-                        <svg
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            className="text-white"
-                        >
-                            <path d="M12 19l7-7 3 3-7 7-3-3z" />
-                            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
-                            <path d="M2 2l7.586 7.586" />
-                            <circle cx="11" cy="11" r="2" />
-                        </svg>
-                    ),
-                },
-                {
-                    title: "Certifications",
-                    value: data.total_certifications.toString(),
-                    change: `${
-                        data.certification_growth_percentage >= 0 ? "+" : ""
-                    }${data.certification_growth_percentage.toFixed(1)}%`,
-                    isPositive: data.certification_growth_percentage >= 0,
-                    bgColor: "bg-purple-500",
-                    icon: (
-                        <svg
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            className="text-white"
-                        >
-                            <path d="M12 15l8-5-8-5-8 5 8 5z" />
-                            <path d="M4 8v8a2 2 0 002 2h12a2 2 0 002-2V8" />
-                            <path d="M9 19l-2 2" />
-                            <path d="M15 19l2 2" />
-                        </svg>
-                    ),
-                },
-                {
-                    title: "Active Enrollments",
-                    value: data.active_enrollments.toString(),
-                    change: `${
-                        data.enrollment_growth_percentage >= 0 ? "+" : ""
-                    }${data.enrollment_growth_percentage.toFixed(1)}%`,
-                    isPositive: data.enrollment_growth_percentage >= 0,
-                    bgColor: "bg-cyan-500",
-                    icon: (
-                        <svg
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            className="text-white"
-                        >
-                            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-                            <circle cx="12" cy="7" r="4" />
-                            <path d="M20 8v6" />
-                            <path d="M23 11h-6" />
-                        </svg>
-                    ),
-                },
-                {
-                    title: "Departments",
-                    value: data.total_departments.toString(),
-                    change: "+0%",
-                    isPositive: true,
-                    bgColor: "bg-indigo-500",
-                    icon: (
-                        <svg
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            className="text-white"
-                        >
-                            <rect
-                                x="3"
-                                y="3"
-                                width="18"
-                                height="18"
-                                rx="2"
-                                ry="2"
-                            />
-                            <line x1="3" y1="9" x2="21" y2="9" />
-                            <line x1="9" y1="21" x2="9" y2="9" />
-                        </svg>
-                    ),
-                },
-                {
-                    title: "Expiring Certifications",
-                    value: data.expiring_certifications.toString(),
-                    change: `${
-                        data.expiring_change_percentage >= 0 ? "+" : ""
-                    }${data.expiring_change_percentage.toFixed(1)}%`,
-                    isPositive: data.expiring_change_percentage < 0, // Negative change is good for expiring certs
-                    bgColor: "bg-orange-500",
-                    icon: (
-                        <svg
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            className="text-white"
-                        >
-                            <circle cx="12" cy="12" r="10" />
-                            <polyline points="12 6 12 12 16 14" />
-                            <path d="M7.5 7.5l9 9" />
-                            <path d="M16.5 7.5l-9 9" />
-                        </svg>
-                    ),
-                },
-                {
-                    title: "Completion Rate",
-                    value: `${data.completion_rate.toFixed(1)}%`,
-                    change: `${
-                        data.completion_change_percentage >= 0 ? "+" : ""
-                    }${data.completion_change_percentage.toFixed(1)}%`,
-                    isPositive: data.completion_change_percentage >= 0,
-                    bgColor: "bg-green-500",
-                    icon: (
-                        <svg
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            className="text-white"
-                        >
-                            <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
-                            <polyline points="22 4 12 14.01 9 11.01" />
-                        </svg>
-                    ),
-                },
-                {
-                    title: "Training Hours",
-                    value: data.total_training_hours.toLocaleString(),
-                    change: `${
-                        data.training_hours_growth_percentage >= 0 ? "+" : ""
-                    }${data.training_hours_growth_percentage.toFixed(1)}%`,
-                    isPositive: data.training_hours_growth_percentage >= 0,
-                    bgColor: "bg-pink-500",
-                    icon: (
-                        <svg
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            className="text-white"
-                        >
-                            <circle cx="12" cy="12" r="10" />
-                            <polyline points="12 6 12 12 16 14" />
-                        </svg>
-                    ),
-                },
-            ];
-
-            setStats(transformedStats);
-            setError(null);
-        } catch (err) {
-            console.error("Error fetching stats:", err);
-            setError("Failed to load dashboard statistics");
-
-            // Fallback to default stats if API fails
-            setStats(defaultStats);
-        } finally {
-            setLoading(false);
-        }
+        return [
+            {
+                title: "Total Employees",
+                value: data.total_employees.toLocaleString(),
+                change: `${
+                    data.employee_growth_percentage >= 0 ? "+" : ""
+                }${data.employee_growth_percentage.toFixed(1)}%`,
+                isPositive: data.employee_growth_percentage >= 0,
+                bgColor: "bg-blue-500",
+                icon: (
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="text-white"
+                    >
+                        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 00-3-3.87" />
+                        <path d="M16 3.13a4 4 0 010 7.75" />
+                    </svg>
+                ),
+            },
+            {
+                title: "Training Programs",
+                value: data.total_trainings.toLocaleString(),
+                change: `${
+                    data.training_growth_percentage >= 0 ? "+" : ""
+                }${data.training_growth_percentage.toFixed(1)}%`,
+                isPositive: data.training_growth_percentage >= 0,
+                bgColor: "bg-emerald-500",
+                icon: (
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="text-white"
+                    >
+                        <path d="M12 19l7-7 3 3-7 7-3-3z" />
+                        <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
+                        <path d="M2 2l7.586 7.586" />
+                        <circle cx="11" cy="11" r="2" />
+                    </svg>
+                ),
+            },
+            {
+                title: "Active Enrollments",
+                value: data.active_enrollments.toLocaleString(),
+                change: `${
+                    data.enrollment_growth_percentage >= 0 ? "+" : ""
+                }${data.enrollment_growth_percentage.toFixed(1)}%`,
+                isPositive: data.enrollment_growth_percentage >= 0,
+                bgColor: "bg-cyan-500",
+                icon: (
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="text-white"
+                    >
+                        <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                        <path d="M20 8v6" />
+                        <path d="M23 11h-6" />
+                    </svg>
+                ),
+            },
+            {
+                title: "Certifications Issued",
+                value: data.total_certifications.toLocaleString(),
+                change: `${
+                    data.certification_growth_percentage >= 0 ? "+" : ""
+                }${data.certification_growth_percentage.toFixed(1)}%`,
+                isPositive: data.certification_growth_percentage >= 0,
+                bgColor: "bg-purple-500",
+                icon: (
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="text-white"
+                    >
+                        <path d="M12 15l8-5-8-5-8 5 8 5z" />
+                        <path d="M4 8v8a2 2 0 002 2h12a2 2 0 002-2V8" />
+                        <path d="M9 19l-2 2" />
+                        <path d="M15 19l2 2" />
+                    </svg>
+                ),
+            },
+            {
+                title: "Departments",
+                value: data.total_departments.toLocaleString(),
+                change: "+0.0%", // Usually departments don't change frequently
+                isPositive: true,
+                bgColor: "bg-indigo-500",
+                icon: (
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="text-white"
+                    >
+                        <rect
+                            x="3"
+                            y="3"
+                            width="18"
+                            height="18"
+                            rx="2"
+                            ry="2"
+                        />
+                        <line x1="3" y1="9" x2="21" y2="9" />
+                        <line x1="9" y1="21" x2="9" y2="9" />
+                    </svg>
+                ),
+            },
+            {
+                title: "Expiring Certifications",
+                value: data.expiring_certifications.toLocaleString(),
+                change: `${
+                    data.expiring_change_percentage >= 0 ? "+" : ""
+                }${data.expiring_change_percentage.toFixed(1)}%`,
+                // Negative change is good (fewer expiring certs)
+                isPositive: data.expiring_change_percentage < 0,
+                bgColor: "bg-orange-500",
+                icon: (
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="text-white"
+                    >
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                        <path d="M7.5 7.5l9 9" />
+                        <path d="M16.5 7.5l-9 9" />
+                    </svg>
+                ),
+            },
+            {
+                title: "Completion Rate",
+                value: `${data.completion_rate.toFixed(1)}%`,
+                change: `${
+                    data.completion_change_percentage >= 0 ? "+" : ""
+                }${data.completion_change_percentage.toFixed(1)}%`,
+                isPositive: data.completion_change_percentage >= 0,
+                bgColor: "bg-green-500",
+                icon: (
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="text-white"
+                    >
+                        <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
+                        <polyline points="22 4 12 14.01 9 11.01" />
+                    </svg>
+                ),
+            },
+            {
+                title: "Training Hours",
+                value: data.total_training_hours.toLocaleString(),
+                change: `${
+                    data.training_hours_growth_percentage >= 0 ? "+" : ""
+                }${data.training_hours_growth_percentage.toFixed(1)}%`,
+                isPositive: data.training_hours_growth_percentage >= 0,
+                bgColor: "bg-pink-500",
+                icon: (
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="text-white"
+                    >
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                ),
+            },
+        ];
     };
 
-    // Default stats as fallback
-    const defaultStats: StatCardProps[] = [
-        {
-            title: "Total Employees",
-            value: "154",
-            change: "+8.2%",
-            isPositive: true,
-            bgColor: "bg-blue-500",
-            icon: (
-                <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className="text-white"
-                >
-                    <path d="M17 21v-2a4 4 00-4-4H5a4 4 00-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M23 21v-2a4 4 00-3-3.87" />
-                    <path d="M16 3.13a4 4 0 010 7.75" />
-                </svg>
-            ),
-        },
-        // ... include other default stats from previous version
-    ];
+    // Get default fallback stats
+    const getDefaultStats = (): StatCardProps[] => {
+        return [
+            {
+                title: "Total Employees",
+                value: "0",
+                change: "+0.0%",
+                isPositive: true,
+                bgColor: "bg-blue-500",
+                icon: (
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="text-white"
+                    >
+                        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 00-3-3.87" />
+                        <path d="M16 3.13a4 4 0 010 7.75" />
+                    </svg>
+                ),
+            },
+            {
+                title: "Training Programs",
+                value: "0",
+                change: "+0.0%",
+                isPositive: true,
+                bgColor: "bg-emerald-500",
+                icon: (
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="text-white"
+                    >
+                        <path d="M12 19l7-7 3 3-7 7-3-3z" />
+                        <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
+                        <path d="M2 2l7.586 7.586" />
+                        <circle cx="11" cy="11" r="2" />
+                    </svg>
+                ),
+            },
+            {
+                title: "Active Enrollments",
+                value: "0",
+                change: "+0.0%",
+                isPositive: true,
+                bgColor: "bg-cyan-500",
+                icon: (
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="text-white"
+                    >
+                        <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                        <path d="M20 8v6" />
+                        <path d="M23 11h-6" />
+                    </svg>
+                ),
+            },
+            {
+                title: "Certifications Issued",
+                value: "0",
+                change: "+0.0%",
+                isPositive: true,
+                bgColor: "bg-purple-500",
+                icon: (
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="text-white"
+                    >
+                        <path d="M12 15l8-5-8-5-8 5 8 5z" />
+                        <path d="M4 8v8a2 2 0 002 2h12a2 2 0 002-2V8" />
+                        <path d="M9 19l-2 2" />
+                        <path d="M15 19l2 2" />
+                    </svg>
+                ),
+            },
+        ];
+    };
+
+    const stats = statsData
+        ? transformStatsToCards(statsData)
+        : getDefaultStats();
 
     if (loading) {
         return (
@@ -402,15 +465,17 @@ const StatsGrid: React.FC = () => {
                         </svg>
                     </div>
                     <h3 className="text-lg font-semibold text-white mb-2">
-                        Failed to Load Data
+                        Failed to Load Stats
                     </h3>
                     <p className="text-gray-300 mb-4">{error}</p>
-                    <button
-                        onClick={fetchStats}
-                        className="px-4 py-2 bg-blue-600 backdrop-blur-sm border border-blue-500/30 rounded-lg text-white hover:bg-blue-700 transition-all duration-300"
-                    >
-                        Retry
-                    </button>
+                    {onRetry && (
+                        <button
+                            onClick={onRetry}
+                            className="px-4 py-2 bg-blue-600 backdrop-blur-sm border border-blue-500/30 rounded-lg text-white hover:bg-blue-700 transition-all duration-300"
+                        >
+                            Retry
+                        </button>
+                    )}
                 </div>
             </div>
         );
