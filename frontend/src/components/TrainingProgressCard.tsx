@@ -23,6 +23,8 @@ interface TrainingProgressCardProps {
     onCreateEnrollment?: () => void;
     onViewAll?: () => void;
     onRetry?: () => void;
+    expandedParticipantId?: string | null;
+    onParticipantExpand?: (participantId: string | null) => void;
 }
 
 const TrainingProgressCard: React.FC<TrainingProgressCardProps> = ({
@@ -33,10 +35,26 @@ const TrainingProgressCard: React.FC<TrainingProgressCardProps> = ({
     onCreateEnrollment,
     onViewAll,
     onRetry,
+    expandedParticipantId = null,
+    onParticipantExpand,
 }) => {
-    const [expandedParticipant, setExpandedParticipant] = useState<
-        string | null
-    >(null);
+    // Use internal state if not controlled from parent
+    const [internalExpandedParticipant, setInternalExpandedParticipant] =
+        useState<string | null>(null);
+
+    // Use controlled state if provided, otherwise use internal state
+    const expandedParticipant =
+        expandedParticipantId !== undefined
+            ? expandedParticipantId
+            : internalExpandedParticipant;
+
+    const setExpandedParticipant = (participantId: string | null) => {
+        if (onParticipantExpand) {
+            onParticipantExpand(participantId);
+        } else {
+            setInternalExpandedParticipant(participantId);
+        }
+    };
 
     // Get status color - updated to match backend statuses
     const getStatusColor = (status: string, hasCertification?: boolean) => {
@@ -269,9 +287,7 @@ const TrainingProgressCard: React.FC<TrainingProgressCardProps> = ({
                                     <p className="font-semibold text-sm text-white truncate drop-shadow-lg">
                                         {participant.name}
                                     </p>
-                                    <p className="text-xs text-gray-300">
-                                        {participant.role}
-                                    </p>
+
                                     <p className="text-xs text-gray-400 mt-1">
                                         {participant.trainingName}
                                     </p>

@@ -1,18 +1,13 @@
 import React from "react";
-import logo from "../assets/logo-1.png";
+import logo from "../assets/logo.png";
 
 const Sidebar: React.FC = () => {
     const menuItems = [
         { label: "Dashboard", active: true },
         { label: "Employees", active: false },
         { label: "Trainings", active: false },
+        { label: "Enrollments", active: false },
         { label: "Certifications", active: false },
-        { label: "Attendance", active: false },
-        { label: "Leave", active: false },
-        { label: "Payroll", active: false },
-        { label: "Performance", active: false },
-        { label: "Recruitment", active: false },
-        { label: "Settings", active: false },
     ];
 
     return (

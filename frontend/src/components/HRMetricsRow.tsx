@@ -85,7 +85,7 @@ const HRMetricsRow: React.FC<HRMetricsRowProps> = ({
                             disabled
                             className="px-3 py-1 bg-gray-700 backdrop-blur-sm border border-white/20 rounded-lg text-sm font-medium text-gray-200 shadow-lg"
                         >
-                            View
+                            View All
                         </button>
                     </div>
                     <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
@@ -130,7 +130,7 @@ const HRMetricsRow: React.FC<HRMetricsRowProps> = ({
                         onClick={() => handleViewAll(type)}
                         className="px-3 py-1 bg-gray-700 backdrop-blur-sm border border-white/20 rounded-lg text-sm font-medium text-gray-200 shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
                     >
-                        View
+                        View All
                     </button>
                 </div>
                 <div className="space-y-3 flex-1">
@@ -157,19 +157,28 @@ const HRMetricsRow: React.FC<HRMetricsRowProps> = ({
                                     <p className="font-semibold text-sm text-white truncate drop-shadow-lg">
                                         {item.name}
                                     </p>
-                                    <p className="text-xs text-gray-300">
-                                        {item.role ||
-                                            item.departmentName ||
-                                            "Item"}
-                                    </p>
+                                    {/* Only show subtitle for employees and trainings, not for departments */}
+                                    {type !== "departments" && item.role && (
+                                        <p className="text-xs text-gray-300 truncate">
+                                            {item.role}
+                                        </p>
+                                    )}
                                 </div>
-                                {item.status && (
+                                {/* Only show status if it exists (for employees and departments, not for trainings) */}
+                                {item.status && type !== "trainings" && (
                                     <div
-                                        className={`px-2 py-1 rounded-full text-xs font-medium ${item.statusColor}`}
+                                        className={`px-2 py-1 rounded-full text-xs font-medium truncate max-w-[120px] ${item.statusColor}`}
                                     >
                                         {item.status}
                                     </div>
                                 )}
+                                {/* Show training count for trainings */}
+                                {type === "trainings" &&
+                                    item.trainingCount !== undefined && (
+                                        <div className="px-2 py-1 rounded-full text-xs font-medium truncate max-w-[120px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
+                                            {item.trainingCount} enrollments
+                                        </div>
+                                    )}
                             </div>
                         ))
                     ) : (
