@@ -134,17 +134,20 @@ const Dashboard: React.FC = () => {
                 trainingsRes,
                 enrollmentsRes,
                 certificationsRes,
+                departmentsRes, // Added departments fetch
             ] = await Promise.all([
                 fetch("http://localhost:8000/employees"),
                 fetch("http://localhost:8000/trainings"),
                 fetch("http://localhost:8000/enrollments"),
                 fetch("http://localhost:8000/certifications"),
+                fetch("http://localhost:8000/departments"), // Fetch departments
             ]);
 
             const employeesData = await employeesRes.json();
             const trainingsData = await trainingsRes.json();
             const enrollmentsData = await enrollmentsRes.json();
             const certificationsData = await certificationsRes.json();
+            const departmentsData = await departmentsRes.json();
 
             // Process the raw data
             const processedData = processDashboardData(
@@ -152,7 +155,8 @@ const Dashboard: React.FC = () => {
                 employeesData,
                 trainingsData,
                 enrollmentsData,
-                certificationsData
+                certificationsData,
+                departmentsData // Pass departments data
             );
 
             setData(processedData);
@@ -170,7 +174,8 @@ const Dashboard: React.FC = () => {
         employees: any,
         trainings: any,
         enrollments: any,
-        certifications: any
+        certifications: any,
+        departments: any // Added departments parameter
     ): DashboardData => {
         // Extract arrays from API responses
         const employeeList = employees.employees || employees || [];
@@ -178,6 +183,7 @@ const Dashboard: React.FC = () => {
         const enrollmentList = enrollments.enrollments || enrollments || [];
         const certificationList =
             certifications.certifications || certifications || [];
+        const departmentList = departments.departments || departments || []; // Get departments list
 
         // Process employee status data
         const totalEmployees = employeeList.length;
@@ -469,6 +475,16 @@ const Dashboard: React.FC = () => {
                     "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-1 rounded-full";
             }
 
+            // Find department name
+            let departmentName = "Unassigned";
+            if (emp.department_id) {
+                const department = departmentList.find(
+                    (dept: any) => dept.id === emp.department_id
+                );
+                departmentName =
+                    department?.name || `Dept ${emp.department_id}`;
+            }
+
             return {
                 id: emp.id.toString(),
                 avatarUrl: `https://ui-avatars.com/api/?name=${
@@ -482,9 +498,7 @@ const Dashboard: React.FC = () => {
                 role: emp.position || "Employee",
                 status,
                 statusColor,
-                departmentName: emp.department_id
-                    ? `Dept ${emp.department_id}`
-                    : "Unassigned",
+                departmentName,
             };
         });
 
@@ -523,57 +537,59 @@ const Dashboard: React.FC = () => {
             };
         });
 
-        // Departments for HR metrics - Simplified version without department data
-        const hrDepartments = [
-            {
-                id: "1",
-                avatarUrl:
-                    "https://ui-avatars.com/api/?name=IT&background=8b5cf6&color=fff&size=40",
-                name: "IT Department",
+        // Departments for HR metrics - Now using actual department data
+        const hrDepartments = departmentList.slice(0, 4).map((dept: any) => {
+            // Count employees in this department
+            const employeeCount = employeeList.filter(
+                (emp: any) => emp.department_id === dept.id
+            ).length;
+
+            // Count trainings assigned to this department (assuming department has training assignments)
+            // If your API has a way to get department-specific trainings, use that instead
+            const trainingCount = enrollmentList.filter((enroll: any) => {
+                const employee = employeeList.find(
+                    (emp: any) => emp.id === enroll.employee_id
+                );
+                return employee?.department_id === dept.id;
+            }).length;
+
+            // Generate avatar based on department name
+            const deptInitials = dept.name
+                .split(" ")
+                .map((word: string) => word.charAt(0))
+                .join("")
+                .substring(0, 2)
+                .toUpperCase();
+
+            // Determine status based on employee count
+            let status = `${employeeCount} employees`;
+            let statusColor =
+                "bg-purple-500/20 text-purple-300 border border-purple-500/40 px-2 py-1 rounded-full";
+
+            // You can customize status colors based on different conditions
+            if (employeeCount === 0) {
+                status = "No employees";
+                statusColor =
+                    "bg-gray-500/20 text-gray-300 border border-gray-500/40 px-2 py-1 rounded-full";
+            } else if (employeeCount > 30) {
+                status = `${employeeCount} employees (Large)`;
+                statusColor =
+                    "bg-green-500/20 text-green-300 border border-green-500/40 px-2 py-1 rounded-full";
+            }
+
+            return {
+                id: dept.id.toString(),
+                avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                    deptInitials
+                )}&background=8b5cf6&color=fff&size=40`,
+                name: dept.name || "Unnamed Department",
                 role: "Department",
-                status: "24 employees",
-                statusColor:
-                    "bg-purple-500/20 text-purple-300 border border-purple-500/40 px-2 py-1 rounded-full",
-                employeeCount: 24,
-                trainingCount: 8,
-            },
-            {
-                id: "2",
-                avatarUrl:
-                    "https://ui-avatars.com/api/?name=HR&background=8b5cf6&color=fff&size=40",
-                name: "HR Department",
-                role: "Department",
-                status: "18 employees",
-                statusColor:
-                    "bg-purple-500/20 text-purple-300 border border-purple-500/40 px-2 py-1 rounded-full",
-                employeeCount: 18,
-                trainingCount: 6,
-            },
-            {
-                id: "3",
-                avatarUrl:
-                    "https://ui-avatars.com/api/?name=SALES&background=8b5cf6&color=fff&size=40",
-                name: "Sales Department",
-                role: "Department",
-                status: "32 employees",
-                statusColor:
-                    "bg-purple-500/20 text-purple-300 border border-purple-500/40 px-2 py-1 rounded-full",
-                employeeCount: 32,
-                trainingCount: 12,
-            },
-            {
-                id: "4",
-                avatarUrl:
-                    "https://ui-avatars.com/api/?name=OPS&background=8b5cf6&color=fff&size=40",
-                name: "Operations",
-                role: "Department",
-                status: "28 employees",
-                statusColor:
-                    "bg-purple-500/20 text-purple-300 border border-purple-500/40 px-2 py-1 rounded-full",
-                employeeCount: 28,
-                trainingCount: 10,
-            },
-        ];
+                status,
+                statusColor,
+                employeeCount,
+                trainingCount,
+            };
+        });
 
         return {
             stats: stats,
