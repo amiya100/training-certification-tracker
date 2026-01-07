@@ -4,5 +4,8 @@ from .training import training
 from .certification import certification
 
 __all__ = [
-    "employee","department","training","certification"
+    "employee",
+    "department",
+    "training",
+    "certification"
 ]
