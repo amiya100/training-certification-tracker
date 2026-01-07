@@ -924,7 +924,7 @@ const Dashboard: React.FC = () => {
                     id: train.id,
                     name: train.name,
                     description: train.description,
-                    duration_hours: train.duration_hours || 0,
+                    duration_hours: train.duration || 0,
                 }))}
             />
 
