@@ -1,3 +1,4 @@
+# app/api/employees.py - FIXED VERSION
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -32,13 +33,13 @@ def read_employees(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
-    department_id: Optional[int] = Query(None, description="Filter by department ID"),  # Changed from department
+    department_id: Optional[int] = Query(None, description="Filter by department ID"),  # Fixed parameter name
     db: Session = Depends(get_db)
 ):
     employees = crud_employee.get_multi(
-        db, skip=skip, limit=limit, is_active=is_active, department_id=department_id  # Changed
+        db, skip=skip, limit=limit, is_active=is_active, department_id=department_id  # Fixed parameter name
     )
-    total = crud_employee.get_total_count(db, is_active=is_active, department_id=department_id)  # Changed
+    total = crud_employee.get_total_count(db, is_active=is_active, department_id=department_id)  # Fixed parameter name
     
     return EmployeeList(
         employees=employees,

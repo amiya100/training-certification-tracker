@@ -1,3 +1,4 @@
+# api/departments.py
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List
@@ -24,7 +25,8 @@ def read_departments(
     limit: int = Query(100, ge=1),
     db: Session = Depends(get_db)
 ):
-    depts = crud_department.get_multi(db, skip, limit)
+    # Use the new method that includes employee counts
+    depts = crud_department.get_all_with_employee_counts(db, skip, limit)
     total = crud_department.get_total_count(db)
     return DepartmentList(
         departments=depts,
@@ -35,7 +37,7 @@ def read_departments(
 
 @router.get("/{dept_id}", response_model=Department)
 def read_department(dept_id: int, db: Session = Depends(get_db)):
-    dept = crud_department.get(db, dept_id)
+    dept = crud_department.get_with_employee_count(db, dept_id)
     if not dept:
         raise HTTPException(status_code=404, detail="Department not found")
     return dept
@@ -71,3 +73,4 @@ def delete_department(dept_id: int, db: Session = Depends(get_db)):
     if not dept:
         raise HTTPException(status_code=404, detail="Department not found")
     return None
+    

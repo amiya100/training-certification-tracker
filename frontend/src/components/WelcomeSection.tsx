@@ -57,9 +57,6 @@ const WelcomeSection: React.FC<WelcomeSectionProps> = ({
             await apiService.createTraining({
                 ...trainingData,
                 duration_hours: Number(trainingData.duration_hours),
-                is_active: true,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
             });
 
             setShowAddTraining(false);

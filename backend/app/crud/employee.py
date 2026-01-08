@@ -1,5 +1,5 @@
 # app/crud/employee.py
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload, joinedload
 from typing import List, Optional
 from datetime import datetime
 from ..models.employee import Employee
@@ -7,13 +7,28 @@ from ..schemas.employee import EmployeeCreate, EmployeeUpdate
 
 class CRUDEmployee:
     def get(self, db: Session, id: int) -> Optional[Employee]:
-        return db.query(Employee).filter(Employee.id == id).first()
+        return (
+            db.query(Employee)
+            .options(selectinload(Employee.department))  # Load department
+            .filter(Employee.id == id)
+            .first()
+        )
     
     def get_by_email(self, db: Session, email: str) -> Optional[Employee]:
-        return db.query(Employee).filter(Employee.email == email).first()
+        return (
+            db.query(Employee)
+            .options(selectinload(Employee.department))  # Load department
+            .filter(Employee.email == email)
+            .first()
+        )
     
     def get_by_employee_id(self, db: Session, employee_id: str) -> Optional[Employee]:
-        return db.query(Employee).filter(Employee.employee_id == employee_id).first()
+        return (
+            db.query(Employee)
+            .options(selectinload(Employee.department))  # Load department
+            .filter(Employee.employee_id == employee_id)
+            .first()
+        )
     
     def get_multi(
         self, 
@@ -23,7 +38,10 @@ class CRUDEmployee:
         is_active: Optional[bool] = None,
         department_id: Optional[int] = None
     ) -> List[Employee]:
-        query = db.query(Employee)
+        query = (
+            db.query(Employee)
+            .options(selectinload(Employee.department))  # Load department
+        )
         
         if is_active is not None:
             query = query.filter(Employee.is_active == is_active)
@@ -54,7 +72,9 @@ class CRUDEmployee:
         db.add(db_employee)
         db.commit()
         db.refresh(db_employee)
-        return db_employee
+        
+        # Refresh with department data
+        return self.get(db, db_employee.id)
     
     def update(self, db: Session, *, db_obj: Employee, obj_in: EmployeeUpdate) -> Employee:
         update_data = obj_in.model_dump(exclude_unset=True)
@@ -66,8 +86,9 @@ class CRUDEmployee:
             setattr(db_obj, field, value)
         
         db.commit()
-        db.refresh(db_obj)
-        return db_obj
+        
+        # Refresh with department data
+        return self.get(db, db_obj.id)
     
     def remove(self, db: Session, *, id: int) -> Optional[Employee]:
         obj = db.query(Employee).get(id)

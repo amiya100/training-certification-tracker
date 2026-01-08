@@ -1,6 +1,14 @@
-from pydantic import BaseModel, EmailStr, Field, validator
+# app/schemas/employee.py
+from pydantic import BaseModel, EmailStr, Field, validator, ConfigDict
 from typing import Optional
 from datetime import date, datetime
+
+# Create a base Department schema
+class DepartmentBase(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True)
 
 class EmployeeBase(BaseModel):
     employee_id: str = Field(..., min_length=1, max_length=50)
@@ -10,6 +18,7 @@ class EmployeeBase(BaseModel):
     department_id: Optional[int] = None
     position: Optional[str] = Field(None, max_length=100)
     hire_date: Optional[date] = None
+    model_config = ConfigDict(from_attributes=True)
 
 class EmployeeCreate(EmployeeBase):
     @validator('employee_id')
@@ -26,15 +35,16 @@ class EmployeeUpdate(BaseModel):
     position: Optional[str] = Field(None, max_length=100)
     hire_date: Optional[date] = None
     is_active: Optional[bool] = None
+    model_config = ConfigDict(from_attributes=True)
 
+# Updated Employee response model with department
 class Employee(EmployeeBase):
     id: int
     is_active: bool
+    department: Optional[DepartmentBase] = None  # Add this line
     created_at: datetime
     updated_at: datetime
-    
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class EmployeeList(BaseModel):
     employees: list[Employee]

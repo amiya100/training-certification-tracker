@@ -8,6 +8,7 @@ import {
     BookOpen,
     ClipboardList,
     Award,
+    Building2,
 } from "lucide-react";
 import { type MenuItemType } from "../App";
 
@@ -58,6 +59,14 @@ const Header: React.FC<HeaderProps> = ({ activeMenuItem }) => {
                         "View and manage employee certifications and expirations",
                     icon: <Award size={20} className="text-yellow-400" />,
                     notifications: 6,
+                };
+            case "departments":
+                return {
+                    title: "Department Management",
+                    description:
+                        "Manage organizational departments and team structures",
+                    icon: <Building2 size={20} className="text-indigo-400" />,
+                    notifications: 1,
                 };
             default:
                 return {

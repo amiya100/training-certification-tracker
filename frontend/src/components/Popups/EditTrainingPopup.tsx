@@ -1,25 +1,40 @@
-// components/AddTrainingPopup.tsx
-import React, { useState } from "react";
-import { type TrainingFormData } from "../../types/training";
+// components/EditTrainingPopup.tsx
+import React, { useState, useEffect } from "react";
+import { type TrainingFormData, type Training } from "../../types/training";
 
-interface AddTrainingPopupProps {
+interface EditTrainingPopupProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (trainingData: TrainingFormData) => Promise<void>;
+    onSave: (trainingData: TrainingFormData & { id: number }) => Promise<void>;
+    training: Training;
 }
 
-const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
+const EditTrainingPopup: React.FC<EditTrainingPopupProps> = ({
     isOpen,
     onClose,
     onSave,
+    training,
 }) => {
-    const [formData, setFormData] = useState<TrainingFormData>({
-        name: "",
-        description: "",
-        duration_hours: "",
-    });
+    const [formData, setFormData] = useState<TrainingFormData & { id: number }>(
+        {
+            id: training.id,
+            name: training.name,
+            description: training.description,
+            duration_hours: training.duration_hours || "",
+        }
+    );
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+
+    // Update form data when training prop changes
+    useEffect(() => {
+        setFormData({
+            id: training.id,
+            name: training.name,
+            description: training.description,
+            duration_hours: training.duration_hours || "",
+        });
+    }, [training]);
 
     const validateForm = (): boolean => {
         const newErrors: Record<string, string> = {};
@@ -55,15 +70,8 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
         setLoading(true);
         try {
             await onSave(formData);
-            setFormData({
-                name: "",
-                description: "",
-                duration_hours: "",
-            });
-            setErrors({});
         } catch (error) {
-            console.error("Error saving training:", error);
-            // You could set a general error message here
+            console.error("Error updating training:", error);
         } finally {
             setLoading(false);
         }
@@ -73,6 +81,9 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
     ) => {
         const { name, value } = e.target;
+
+        // Only update form fields, not id
+        if (name === "id") return;
 
         setFormData((prev) => ({
             ...prev,
@@ -135,10 +146,10 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
                                         </div>
                                         <div>
                                             <h2 className="text-xl font-bold text-white drop-shadow-lg">
-                                                Add Training Program
+                                                Edit Training Program
                                             </h2>
                                             <p className="text-xs text-gray-300">
-                                                Create a new training program
+                                                Update training details
                                             </p>
                                         </div>
                                     </div>
@@ -338,10 +349,10 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
                                                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                                                     ></path>
                                                 </svg>
-                                                Creating...
+                                                Updating...
                                             </>
                                         ) : (
-                                            "Create Training"
+                                            "Update Training"
                                         )}
                                     </button>
                                 </div>
@@ -354,4 +365,4 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
     );
 };
 
-export default AddTrainingPopup;
+export default EditTrainingPopup;

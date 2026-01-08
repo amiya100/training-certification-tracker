@@ -62,9 +62,6 @@ const StatCard: React.FC<StatCardProps> = ({
                         {value}
                     </span>
                 </div>
-                <button className="text-blue-400 hover:text-blue-300 text-sm font-medium hover:-translate-y-0.5 transition-all duration-300">
-                    View Details →
-                </button>
             </div>
         </div>
     );

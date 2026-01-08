@@ -34,7 +34,9 @@ const Dashboard: React.FC = () => {
 
             // Fetch processed dashboard data from single endpoint
             const processedData = await apiService.getDashboardData();
+            const departmentsData = await apiService.getDepartments();
             setData(processedData);
+            setDepartments(departmentsData);
         } catch (err) {
             console.error("Error fetching dashboard data:", err);
             setError(
@@ -51,16 +53,13 @@ const Dashboard: React.FC = () => {
     // Fetch raw data for popups (only when needed)
     const fetchRawDataForPopup = useCallback(async () => {
         try {
-            const [employeesData, trainingsData, departmentsData] =
-                await Promise.all([
-                    apiService.getEmployees(),
-                    apiService.getTrainings(),
-                    apiService.getDepartments(),
-                ]);
+            const [employeesData, trainingsData] = await Promise.all([
+                apiService.getEmployees(),
+                apiService.getTrainings(),
+            ]);
 
             setEmployees(employeesData);
             setTrainings(trainingsData);
-            setDepartments(departmentsData);
         } catch (err) {
             console.error("Error fetching raw data for popup:", err);
             // Don't show toast as this is background fetch for popup

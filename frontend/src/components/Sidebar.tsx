@@ -14,6 +14,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
     const menuItems: { label: string; type: MenuItemType }[] = [
         { label: "Dashboard", type: "dashboard" },
+        { label: "Departments", type: "departments" },
         { label: "Employees", type: "employees" },
         { label: "Trainings", type: "trainings" },
         { label: "Enrollments", type: "enrollments" },

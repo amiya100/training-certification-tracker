@@ -1,16 +1,24 @@
 // employee.ts
+
+export interface Department {
+    id: number;
+    name: string;
+    description?: string;
+}
+
 export interface Employee {
     id: number;
     employee_id: string;
     first_name: string;
     last_name: string;
     email: string;
-    department_id: number | null;
-    position: string;
-    hire_date: string;
-    is_active: boolean;
-    created_at: string;
-    updated_at: string;
+    department_id?: number | null;
+    department?: Department;
+    position?: string;
+    hire_date?: string;
+    is_active?: boolean;
+    created_at?: string;
+    updated_at?: string;
 }
 
 export interface EmployeeFormData {
@@ -18,7 +26,7 @@ export interface EmployeeFormData {
     first_name: string;
     last_name: string;
     email: string;
-    department_id: number | null;
+    department_id?: number | null;
     position: string;
     hire_date: string;
 }

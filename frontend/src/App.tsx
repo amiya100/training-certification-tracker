@@ -3,6 +3,11 @@ import React, { useState } from "react";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
 import Dashboard from "./pages/Dashboard";
+import Departments from "./pages/Departments";
+import Employees from "./pages/Employees";
+import Trainings from "./pages/Trainings";
+import Enrollments from "./pages/Enrollments";
+import Certifications from "./pages/Certifications";
 // import Employees from "./pages/Employees";
 // import Trainings from "./pages/Trainings";
 // import Enrollments from "./pages/Enrollments";
@@ -10,6 +15,7 @@ import Dashboard from "./pages/Dashboard";
 
 export type MenuItemType =
     | "dashboard"
+    | "departments"
     | "employees"
     | "trainings"
     | "enrollments"
@@ -23,14 +29,16 @@ const App: React.FC = () => {
         switch (activeMenuItem) {
             case "dashboard":
                 return <Dashboard />;
-            // case "employees":
-            //     return <Employees />;
-            // case "trainings":
-            //     return <Trainings />;
-            // case "enrollments":
-            //     return <Enrollments />;
-            // case "certifications":
-            //     return <Certifications />;
+            case "departments":
+                return <Departments />;
+            case "employees":
+                return <Employees />;
+            case "trainings":
+                return <Trainings />;
+            case "enrollments":
+                return <Enrollments />;
+            case "certifications":
+                return <Certifications />;
             default:
                 return <Dashboard />;
         }

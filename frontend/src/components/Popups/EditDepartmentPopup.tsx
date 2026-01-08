@@ -1,44 +1,56 @@
-// components/AddTrainingPopup.tsx
-import React, { useState } from "react";
-import { type TrainingFormData } from "../../types/training";
+// components/EditDepartmentPopup.tsx
+import React, { useState, useEffect } from "react";
+import {
+    type DepartmentFormData,
+    type Department,
+} from "../../types/department";
 
-interface AddTrainingPopupProps {
+interface EditDepartmentPopupProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (trainingData: TrainingFormData) => Promise<void>;
+    onSave: (
+        departmentData: DepartmentFormData & { id: number }
+    ) => Promise<void>;
+    department: Department | null;
 }
 
-const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
+const EditDepartmentPopup: React.FC<EditDepartmentPopupProps> = ({
     isOpen,
     onClose,
     onSave,
+    department,
 }) => {
-    const [formData, setFormData] = useState<TrainingFormData>({
+    const [formData, setFormData] = useState<
+        DepartmentFormData & { id: number }
+    >({
+        id: 0,
         name: "",
         description: "",
-        duration_hours: "",
     });
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+
+    // Initialize form data when department changes or popup opens
+    useEffect(() => {
+        if (department) {
+            setFormData({
+                id: department.id,
+                name: department.name || "",
+                description: department.description || "",
+            });
+        }
+        setErrors({});
+    }, [department, isOpen]);
 
     const validateForm = (): boolean => {
         const newErrors: Record<string, string> = {};
 
         if (!formData.name.trim()) {
-            newErrors.name = "Training name is required";
+            newErrors.name = "Department name is required";
         }
 
-        if (!formData.description.trim()) {
+        if (formData.description && !formData.description.trim()) {
             newErrors.description = "Description is required";
-        }
-
-        if (formData.duration_hours === "" || formData.duration_hours === 0) {
-            newErrors.duration_hours = "Duration is required";
-        } else if (
-            typeof formData.duration_hours === "number" &&
-            formData.duration_hours < 0
-        ) {
-            newErrors.duration_hours = "Duration must be positive";
         }
 
         setErrors(newErrors);
@@ -55,14 +67,8 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
         setLoading(true);
         try {
             await onSave(formData);
-            setFormData({
-                name: "",
-                description: "",
-                duration_hours: "",
-            });
-            setErrors({});
         } catch (error) {
-            console.error("Error saving training:", error);
+            console.error("Error updating department:", error);
             // You could set a general error message here
         } finally {
             setLoading(false);
@@ -76,12 +82,7 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
 
         setFormData((prev) => ({
             ...prev,
-            [name]:
-                name === "duration_hours"
-                    ? value === ""
-                        ? ""
-                        : Number(value)
-                    : value,
+            [name]: value,
         }));
 
         // Clear error for this field when user starts typing
@@ -93,7 +94,7 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
         }
     };
 
-    if (!isOpen) return null;
+    if (!isOpen || !department) return null;
 
     return (
         <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -114,7 +115,7 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
                             <div className="p-5 border-b border-white/20">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center space-x-3">
-                                        <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-xl border border-white/30">
+                                        <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-xl border border-white/30">
                                             <svg
                                                 width="20"
                                                 height="20"
@@ -124,21 +125,37 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
                                                 strokeWidth="2"
                                                 className="text-white drop-shadow-lg"
                                             >
-                                                <path d="M12 14l9-5-9-5-9 5 9 5z" />
-                                                <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222"
+                                                <rect
+                                                    x="3"
+                                                    y="3"
+                                                    width="18"
+                                                    height="18"
+                                                    rx="2"
+                                                    ry="2"
                                                 />
+                                                <line
+                                                    x1="3"
+                                                    y1="9"
+                                                    x2="21"
+                                                    y2="9"
+                                                />
+                                                <line
+                                                    x1="9"
+                                                    y1="21"
+                                                    x2="9"
+                                                    y2="9"
+                                                />
+                                                <path d="M15 3v6" />
+                                                <path d="M9 3v6" />
+                                                <path d="M3 15h18" />
                                             </svg>
                                         </div>
                                         <div>
                                             <h2 className="text-xl font-bold text-white drop-shadow-lg">
-                                                Add Training Program
+                                                Edit Department
                                             </h2>
                                             <p className="text-xs text-gray-300">
-                                                Create a new training program
+                                                Update department information
                                             </p>
                                         </div>
                                     </div>
@@ -177,10 +194,27 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
                                 onSubmit={handleSubmit}
                                 className="p-5 space-y-4"
                             >
-                                {/* Training Name */}
+                                {/* Department ID (hidden but shown for reference) */}
+                                <div className="flex items-center space-x-2 text-sm text-gray-400">
+                                    <svg
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        className="text-blue-400"
+                                    >
+                                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                                    </svg>
+                                    <span>Department ID: {department.id}</span>
+                                </div>
+
+                                {/* Department Name */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-200 mb-2 drop-shadow-lg">
-                                        Training Name *
+                                        Department Name *
                                     </label>
                                     <div className="relative">
                                         <input
@@ -192,8 +226,8 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
                                                 errors.name
                                                     ? "border-red-500/50"
                                                     : "border-white/20"
-                                            } rounded-xl px-3 py-2.5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-sm`}
-                                            placeholder="e.g., Python Programming Fundamentals"
+                                            } rounded-xl px-3 py-2.5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-sm`}
+                                            placeholder="e.g., Engineering, Marketing, HR"
                                         />
                                         {errors.name && (
                                             <p className="mt-1.5 text-xs text-red-400 flex items-center">
@@ -230,52 +264,6 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
                                     </div>
                                 </div>
 
-                                {/* Duration Hours */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-200 mb-2 drop-shadow-lg">
-                                        Duration (Hours) *
-                                    </label>
-                                    <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                                            <svg
-                                                width="16"
-                                                height="16"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                                className="text-gray-400"
-                                            >
-                                                <circle
-                                                    cx="12"
-                                                    cy="12"
-                                                    r="10"
-                                                />
-                                                <polyline points="12 6 12 12 16 14" />
-                                            </svg>
-                                        </div>
-                                        <input
-                                            type="number"
-                                            name="duration_hours"
-                                            value={formData.duration_hours}
-                                            onChange={handleChange}
-                                            step="0.5"
-                                            min="0"
-                                            className={`w-full bg-gray-700/30 backdrop-blur-sm border ${
-                                                errors.duration_hours
-                                                    ? "border-red-500/50"
-                                                    : "border-white/20"
-                                            } rounded-xl pl-10 pr-3 py-2.5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-sm`}
-                                            placeholder="e.g., 8.5"
-                                        />
-                                        {errors.duration_hours && (
-                                            <p className="mt-1.5 text-xs text-red-400">
-                                                {errors.duration_hours}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-
                                 {/* Description */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-200 mb-2 drop-shadow-lg">
@@ -291,14 +279,91 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
                                                 errors.description
                                                     ? "border-red-500/50"
                                                     : "border-white/20"
-                                            } rounded-xl px-3 py-2.5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-sm resize-none`}
-                                            placeholder="Provide a detailed description of the training program..."
+                                            } rounded-xl px-3 py-2.5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-sm resize-none`}
+                                            placeholder="Provide a detailed description of the department's purpose and responsibilities..."
                                         />
                                         {errors.description && (
                                             <p className="mt-1.5 text-xs text-red-400">
                                                 {errors.description}
                                             </p>
                                         )}
+                                    </div>
+                                </div>
+
+                                {/* Additional Info Section */}
+                                <div className="pt-3 border-t border-white/10">
+                                    <h3 className="text-sm font-medium text-gray-200 mb-3 drop-shadow-lg">
+                                        Additional Information
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="bg-gray-800/30 backdrop-blur-sm border border-white/10 rounded-xl p-3">
+                                            <div className="flex items-center space-x-2">
+                                                <div className="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                                                    <svg
+                                                        width="14"
+                                                        height="14"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                        className="text-emerald-400"
+                                                    >
+                                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                                        <circle
+                                                            cx="9"
+                                                            cy="7"
+                                                            r="4"
+                                                        />
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-400">
+                                                        Created
+                                                    </p>
+                                                    <p className="text-sm text-white font-medium">
+                                                        {department.created_at
+                                                            ? new Date(
+                                                                  department.created_at
+                                                              ).toLocaleDateString()
+                                                            : "N/A"}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="bg-gray-800/30 backdrop-blur-sm border border-white/10 rounded-xl p-3">
+                                            <div className="flex items-center space-x-2">
+                                                <div className="w-8 h-8 bg-amber-500/20 rounded-lg flex items-center justify-center">
+                                                    <svg
+                                                        width="14"
+                                                        height="14"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                        className="text-amber-400"
+                                                    >
+                                                        <circle
+                                                            cx="12"
+                                                            cy="12"
+                                                            r="10"
+                                                        />
+                                                        <polyline points="12 6 12 12 16 14" />
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-400">
+                                                        Last Updated
+                                                    </p>
+                                                    <p className="text-sm text-white font-medium">
+                                                        {department.updated_at
+                                                            ? new Date(
+                                                                  department.updated_at
+                                                              ).toLocaleDateString()
+                                                            : "N/A"}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -314,7 +379,7 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
                                     <button
                                         type="submit"
                                         disabled={loading}
-                                        className="flex-1 py-2.5 px-5 bg-gradient-to-r from-orange-500 to-orange-600 backdrop-blur-sm border border-orange-500/30 rounded-xl text-white hover:from-orange-600 hover:to-orange-700 transition-all duration-300 font-semibold shadow-xl hover:shadow-2xl hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-sm"
+                                        className="flex-1 py-2.5 px-5 bg-gradient-to-r from-blue-600 to-blue-700 backdrop-blur-sm border border-blue-500/30 rounded-xl text-white hover:from-blue-700 hover:to-blue-800 transition-all duration-300 font-semibold shadow-xl hover:shadow-2xl hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-sm"
                                     >
                                         {loading ? (
                                             <>
@@ -338,10 +403,10 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
                                                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                                                     ></path>
                                                 </svg>
-                                                Creating...
+                                                Updating...
                                             </>
                                         ) : (
-                                            "Create Training"
+                                            "Update Department"
                                         )}
                                     </button>
                                 </div>
@@ -354,4 +419,4 @@ const AddTrainingPopup: React.FC<AddTrainingPopupProps> = ({
     );
 };
 
-export default AddTrainingPopup;
+export default EditDepartmentPopup;

@@ -1,31 +1,57 @@
-import React, { useState } from "react";
+// components/Popups/EditEmployeePopup.tsx
+import React, { useState, useEffect } from "react";
 import { type EmployeeFormData } from "../../types/employee";
 import { type Department } from "../../types/department";
+import { type Employee } from "../../types/employee";
 
-interface AddEmployeePopupProps {
+interface EditEmployeePopupProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (employeeData: EmployeeFormData) => Promise<void>;
+    onSave: (employeeData: EmployeeFormData & { id: number }) => Promise<void>;
+    employee: Employee | null;
     departments: Department[];
 }
 
-const AddEmployeePopup: React.FC<AddEmployeePopupProps> = ({
+const EditEmployeePopup: React.FC<EditEmployeePopupProps> = ({
     isOpen,
     onClose,
     onSave,
+    employee,
     departments,
 }) => {
-    const [formData, setFormData] = useState<EmployeeFormData>({
-        employee_id: "",
-        first_name: "",
-        last_name: "",
-        email: "",
-        department_id: null,
-        position: "",
-        hire_date: new Date().toISOString().split("T")[0],
-    });
+    const [formData, setFormData] = useState<EmployeeFormData & { id: number }>(
+        {
+            id: 0,
+            employee_id: "",
+            first_name: "",
+            last_name: "",
+            email: "",
+            department_id: null,
+            position: "",
+            hire_date: new Date().toISOString().split("T")[0],
+        }
+    );
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+
+    // Initialize form data when employee changes or popup opens
+    useEffect(() => {
+        if (employee) {
+            setFormData({
+                id: employee.id,
+                employee_id: employee.employee_id || "",
+                first_name: employee.first_name || "",
+                last_name: employee.last_name || "",
+                email: employee.email || "",
+                department_id: employee.department_id || null,
+                position: employee.position || "",
+                hire_date: employee.hire_date
+                    ? new Date(employee.hire_date).toISOString().split("T")[0]
+                    : new Date().toISOString().split("T")[0],
+            });
+        }
+        setErrors({});
+    }, [employee, isOpen]);
 
     const validateForm = (): boolean => {
         const newErrors: Record<string, string> = {};
@@ -70,18 +96,8 @@ const AddEmployeePopup: React.FC<AddEmployeePopupProps> = ({
         setLoading(true);
         try {
             await onSave(formData);
-            setFormData({
-                employee_id: "",
-                first_name: "",
-                last_name: "",
-                email: "",
-                department_id: null,
-                position: "",
-                hire_date: new Date().toISOString().split("T")[0],
-            });
-            setErrors({});
         } catch (error) {
-            console.error("Error saving employee:", error);
+            console.error("Error updating employee:", error);
             // You could set a general error message here
         } finally {
             setLoading(false);
@@ -112,7 +128,7 @@ const AddEmployeePopup: React.FC<AddEmployeePopupProps> = ({
         }
     };
 
-    if (!isOpen) return null;
+    if (!isOpen || !employee) return null;
 
     return (
         <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -122,14 +138,14 @@ const AddEmployeePopup: React.FC<AddEmployeePopupProps> = ({
                 onClick={onClose}
             ></div>
 
-            {/* Popup Container - Use grid instead of flex for better centering */}
+            {/* Popup Container */}
             <div className="min-h-screen px-4 py-4 grid place-items-center">
                 <div className="w-full max-w-xl">
                     {/* Card - Updated to match dashboard theme */}
                     <div className="bg-[#1a1a1a] rounded-3xl p-0.5">
                         {/* Inner card with gradient */}
                         <div className="bg-gradient-to-r from-transparent via-transparent to-white/5 backdrop-blur-sm border border-white/20 rounded-3xl shadow-2xl overflow-hidden transform transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_35px_60px_-15px_rgba(0,0,0,0.5)]">
-                            {/* Header - Made more compact */}
+                            {/* Header */}
                             <div className="p-5 border-b border-white/20">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center space-x-3">
@@ -151,10 +167,10 @@ const AddEmployeePopup: React.FC<AddEmployeePopupProps> = ({
                                         </div>
                                         <div>
                                             <h2 className="text-xl font-bold text-white drop-shadow-lg">
-                                                Add New Employee
+                                                Edit Employee
                                             </h2>
                                             <p className="text-xs text-gray-300">
-                                                Fill in the employee details
+                                                Update employee information
                                             </p>
                                         </div>
                                     </div>
@@ -188,11 +204,30 @@ const AddEmployeePopup: React.FC<AddEmployeePopupProps> = ({
                                 </div>
                             </div>
 
-                            {/* Form - Made more compact */}
+                            {/* Form */}
                             <form
                                 onSubmit={handleSubmit}
                                 className="p-5 space-y-4"
                             >
+                                {/* Employee ID Reference */}
+                                <div className="flex items-center space-x-2 text-sm text-gray-400">
+                                    <svg
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        className="text-blue-400"
+                                    >
+                                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                                    </svg>
+                                    <span>
+                                        Employee ID: {employee.employee_id}
+                                    </span>
+                                </div>
+
                                 {/* Employee ID */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-200 mb-2 drop-shadow-lg">
@@ -334,7 +369,7 @@ const AddEmployeePopup: React.FC<AddEmployeePopupProps> = ({
                                     </div>
                                 </div>
 
-                                {/* Position & Department in one line */}
+                                {/* Position & Department */}
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-200 mb-2 drop-shadow-lg">
@@ -463,7 +498,84 @@ const AddEmployeePopup: React.FC<AddEmployeePopupProps> = ({
                                     </div>
                                 </div>
 
-                                {/* Buttons - Made more compact */}
+                                {/* Additional Info Section */}
+                                <div className="pt-3 border-t border-white/10">
+                                    <h3 className="text-sm font-medium text-gray-200 mb-3 drop-shadow-lg">
+                                        Additional Information
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="bg-gray-800/30 backdrop-blur-sm border border-white/10 rounded-xl p-3">
+                                            <div className="flex items-center space-x-2">
+                                                <div className="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                                                    <svg
+                                                        width="14"
+                                                        height="14"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                        className="text-emerald-400"
+                                                    >
+                                                        <circle
+                                                            cx="12"
+                                                            cy="12"
+                                                            r="10"
+                                                        />
+                                                        <polyline points="12 6 12 12 16 14" />
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-400">
+                                                        Created
+                                                    </p>
+                                                    <p className="text-sm text-white font-medium">
+                                                        {employee.created_at
+                                                            ? new Date(
+                                                                  employee.created_at
+                                                              ).toLocaleDateString()
+                                                            : "N/A"}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="bg-gray-800/30 backdrop-blur-sm border border-white/10 rounded-xl p-3">
+                                            <div className="flex items-center space-x-2">
+                                                <div className="w-8 h-8 bg-amber-500/20 rounded-lg flex items-center justify-center">
+                                                    <svg
+                                                        width="14"
+                                                        height="14"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                        className="text-amber-400"
+                                                    >
+                                                        <circle
+                                                            cx="12"
+                                                            cy="12"
+                                                            r="10"
+                                                        />
+                                                        <polyline points="12 6 12 12 16 14" />
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-400">
+                                                        Last Updated
+                                                    </p>
+                                                    <p className="text-sm text-white font-medium">
+                                                        {employee.updated_at
+                                                            ? new Date(
+                                                                  employee.updated_at
+                                                              ).toLocaleDateString()
+                                                            : "N/A"}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Buttons */}
                                 <div className="flex space-x-3 pt-5">
                                     <button
                                         type="button"
@@ -499,10 +611,10 @@ const AddEmployeePopup: React.FC<AddEmployeePopupProps> = ({
                                                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                                                     ></path>
                                                 </svg>
-                                                Saving...
+                                                Updating...
                                             </>
                                         ) : (
-                                            "Add Employee"
+                                            "Update Employee"
                                         )}
                                     </button>
                                 </div>
@@ -515,4 +627,4 @@ const AddEmployeePopup: React.FC<AddEmployeePopupProps> = ({
     );
 };
 
-export default AddEmployeePopup;
+export default EditEmployeePopup;

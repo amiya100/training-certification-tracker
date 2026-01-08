@@ -27,7 +27,7 @@ const AddDepartmentPopup: React.FC<AddDepartmentPopupProps> = ({
             newErrors.name = "Department name is required";
         }
 
-        if (!formData.description.trim()) {
+        if (formData.description && !formData.description.trim()) {
             newErrors.description = "Description is required";
         }
 
@@ -45,6 +45,11 @@ const AddDepartmentPopup: React.FC<AddDepartmentPopupProps> = ({
         setLoading(true);
         try {
             await onSave(formData);
+            setFormData({
+                name: "",
+                description: "",
+            });
+            setErrors({});
         } catch (error) {
             console.error("Error saving department:", error);
             // You could set a general error message here
