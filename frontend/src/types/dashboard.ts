@@ -1,54 +1,84 @@
 // types/dashboard.ts
-import { type EmployeeStatusData } from "./employee";
-import { type TrainingCertificationData } from "./training";
-import { type TrainingProgressItem } from "./enrollment";
-import { type HRMetricsData } from "./hr";
-
-/**
- * Main dashboard data interface that combines all dashboard components
- */
-export interface DashboardData {
-    /** Statistics card data */
-    stats: DashboardStats;
-
-    /** Employee status card data */
-    employeeStatus: EmployeeStatusData;
-
-    /** Training & certification card data */
-    trainingCertifications: TrainingCertificationData;
-
-    /** Training progress list data */
-    trainingProgress: TrainingProgressItem[];
-
-    /** HR metrics row data */
-    hrMetrics: HRMetricsData;
+export interface DashboardStats {
+    total_employees: number;
+    total_trainings: number;
+    total_certifications: number;
+    active_enrollments: number;
+    total_departments: number;
+    expiring_certifications: number;
+    completion_rate: number;
+    total_training_hours: number;
+    employee_growth_percentage: number;
+    enrollment_growth_percentage: number;
+    certification_growth_percentage: number;
+    expiring_change_percentage: number;
+    completion_change_percentage: number;
+    training_hours_growth_percentage: number;
+    training_growth_percentage: number;
 }
 
-export interface DashboardStats {
-    // employees / departments
-    total_employees: number;
-    total_departments: number;
-    employee_growth_percentage: number;
+export interface StatusDistributionItem {
+    label: string;
+    count: number;
+    percent: number;
+    color: string;
+}
 
-    // trainings (training programs)
-    total_trainings: number;
-    training_growth_percentage: number;
+export interface EmployeeStatus {
+    totalEmployees: number;
+    distribution: StatusDistributionItem[];
+    topPerformer: {
+        name: string;
+        role: string;
+        performance: number;
+    };
+}
 
-    // enrollments (employee assignments to trainings)
-    active_enrollments: number;
-    enrollment_growth_percentage: number;
+export interface TrainingCertificationStatus {
+    totalTrainings: number;
+    certificationStatuses: StatusDistributionItem[];
+    expiringSoonCount: number;
+    expiringAvatars: string[];
+    upcomingDeadlines: number;
+}
 
-    // certifications
-    total_certifications: number;
-    expiring_certifications: number;
-    expiring_change_percentage: number;
-    certification_growth_percentage: number;
+export interface TrainingProgressItem {
+    id: string;
+    name: string;
+    role: string;
+    avatarUrl?: string;
+    trainingName: string;
+    progress: number;
+    status: string;
+    startDate?: string;
+    endDate?: string;
+    deadline?: string;
+    completionDate?: string;
+    hasCertification?: boolean;
+}
 
-    // completion rate
-    completion_rate: number;
-    completion_change_percentage: number;
+export interface HRMetricItem {
+    id: string;
+    avatarUrl: string;
+    name: string;
+    role?: string;
+    status?: string;
+    statusColor?: string;
+    departmentName?: string;
+    trainingCount?: number;
+    employeeCount?: number;
+}
 
-    // training hours
-    total_training_hours: number;
-    training_hours_growth_percentage: number;
+export interface HRMetrics {
+    employees: HRMetricItem[];
+    trainings: HRMetricItem[];
+    departments: HRMetricItem[];
+}
+
+export interface DashboardData {
+    stats: DashboardStats;
+    employeeStatus: EmployeeStatus;
+    trainingCertifications: TrainingCertificationStatus;
+    trainingProgress: TrainingProgressItem[];
+    hrMetrics: HRMetrics;
 }

@@ -1,6 +1,6 @@
 // TrainingProgressCard.tsx
 import React, { useState } from "react";
-import { type TrainingProgressItem } from "../types/enrollment";
+import { type TrainingProgressItem } from "../types/dashboard";
 
 interface TrainingProgressCardProps {
     data?: TrainingProgressItem[];

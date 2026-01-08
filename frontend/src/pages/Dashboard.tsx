@@ -9,7 +9,6 @@ import HRMetricsRow from "../components/HRMetricsRow";
 import CreateEnrollmentPopup from "../components/Popups/CreateEnrollmentPopup";
 import ToastContainer from "../components/ToastContainer";
 import { apiService } from "../services/api";
-import { DashboardProcessor } from "../utils/dashboardProcessor";
 import { useToast } from "../hooks/useToast";
 import { type DashboardData } from "../types/dashboard";
 import { type Employee } from "../types/employee";
@@ -27,44 +26,14 @@ const Dashboard: React.FC = () => {
     const [showCreateEnrollment, setShowCreateEnrollment] = useState(false);
     const { toasts, addToast, removeToast } = useToast();
 
-    // Memoized fetch function
+    // Fetch dashboard data from the single processed endpoint
     const fetchDashboardData = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
 
-            // Fetch all data in parallel
-            const [
-                statsData,
-                employeesData,
-                trainingsData,
-                enrollmentsData,
-                certificationsData,
-                departmentsData,
-            ] = await Promise.all([
-                apiService.getDashboardStats(),
-                apiService.getEmployees(),
-                apiService.getTrainings(),
-                apiService.getEnrollments(),
-                apiService.getCertifications(),
-                apiService.getDepartments(),
-            ]);
-
-            // Store raw data
-            setEmployees(employeesData);
-            setTrainings(trainingsData);
-            setDepartments(departmentsData);
-
-            // Process data
-            const processor = new DashboardProcessor(
-                employeesData,
-                trainingsData,
-                enrollmentsData,
-                certificationsData,
-                departmentsData
-            );
-
-            const processedData = processor.processAll(statsData);
+            // Fetch processed dashboard data from single endpoint
+            const processedData = await apiService.getDashboardData();
             setData(processedData);
         } catch (err) {
             console.error("Error fetching dashboard data:", err);
@@ -79,6 +48,25 @@ const Dashboard: React.FC = () => {
         }
     }, [addToast]);
 
+    // Fetch raw data for popups (only when needed)
+    const fetchRawDataForPopup = useCallback(async () => {
+        try {
+            const [employeesData, trainingsData, departmentsData] =
+                await Promise.all([
+                    apiService.getEmployees(),
+                    apiService.getTrainings(),
+                    apiService.getDepartments(),
+                ]);
+
+            setEmployees(employeesData);
+            setTrainings(trainingsData);
+            setDepartments(departmentsData);
+        } catch (err) {
+            console.error("Error fetching raw data for popup:", err);
+            // Don't show toast as this is background fetch for popup
+        }
+    }, []);
+
     // Handle save enrollment
     const handleSaveEnrollment = useCallback(
         async (enrollmentData: EnrollmentFormData) => {
@@ -88,7 +76,7 @@ const Dashboard: React.FC = () => {
                 setShowCreateEnrollment(false);
                 addToast("Enrollment created successfully!", "success");
 
-                // Refresh only necessary data
+                // Refresh dashboard data
                 fetchDashboardData();
             } catch (error) {
                 console.error("Error creating enrollment:", error);
@@ -103,10 +91,25 @@ const Dashboard: React.FC = () => {
         [addToast, fetchDashboardData]
     );
 
-    // Initial fetch
+    // Initial fetch of dashboard data
     useEffect(() => {
         fetchDashboardData();
     }, [fetchDashboardData]);
+
+    // Fetch raw data when popup might be opened
+    useEffect(() => {
+        if (
+            showCreateEnrollment &&
+            (employees.length === 0 || trainings.length === 0)
+        ) {
+            fetchRawDataForPopup();
+        }
+    }, [
+        showCreateEnrollment,
+        employees.length,
+        trainings.length,
+        fetchRawDataForPopup,
+    ]);
 
     // Auto-refresh every 5 minutes
     useEffect(() => {
@@ -121,13 +124,7 @@ const Dashboard: React.FC = () => {
 
     // Error state
     if (error || !data) {
-        return (
-            <ErrorState
-                error={error}
-                onRetry={fetchDashboardData}
-                departments={departments}
-            />
-        );
+        return <ErrorState error={error} onRetry={fetchDashboardData} />;
     }
 
     return (
@@ -261,19 +258,11 @@ const DashboardSkeleton = () => (
 interface ErrorStateProps {
     error: string | null;
     onRetry: () => void;
-    departments: Department[];
 }
 
-const ErrorState: React.FC<ErrorStateProps> = ({
-    error,
-    onRetry,
-    departments,
-}) => (
+const ErrorState: React.FC<ErrorStateProps> = ({ error, onRetry }) => (
     <div className="p-5">
-        <WelcomeSection
-            departments={departments}
-            onRefreshDashboard={onRetry}
-        />
+        <WelcomeSection departments={[]} onRefreshDashboard={onRetry} />
         <div className="text-center py-20">
             <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg

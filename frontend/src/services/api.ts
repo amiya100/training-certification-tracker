@@ -21,8 +21,8 @@ class ApiService {
     }
 
     // Dashboard stats
-    async getDashboardStats() {
-        return this.fetchWithError<any>("/api/dashboard/stats");
+    async getDashboardData() {
+        return this.fetchWithError<any>("/api/dashboard/dashboard-data");
     }
 
     // Employees
