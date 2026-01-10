@@ -8,7 +8,8 @@ from app.routes import (
     training_router,
     enrollment_router,
     certification_router,
-    dashboard_router
+    dashboard_router,
+    compliance_router
 )
 
 app = FastAPI(title="Training & Certification Tracker")
@@ -32,6 +33,7 @@ app.include_router(training_router)
 app.include_router(enrollment_router)
 app.include_router(certification_router)
 app.include_router(dashboard_router)
+app.include_router(compliance_router)
 
 @app.get("/")
 def root():

@@ -1,9 +1,9 @@
 // EmployeeStatusCard.tsx
 import React from "react";
-import { type EmployeeStatusData } from "../types/employee";
+import { type EmployeeStatus } from "../types/dashboard";
 
 interface EmployeeStatusCardProps {
-    data?: EmployeeStatusData;
+    data?: EmployeeStatus;
     periodLabel?: string;
     loading?: boolean;
     error?: string | null;

@@ -1,42 +1,25 @@
-from sqlalchemy import func, case, and_, or_
+from sqlalchemy import func, case
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session, joinedload, aliased
+from sqlalchemy.orm import Session
 import pytz
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any
 from ..database import get_db
-from .. import models, schemas
+from ..models import Employee, Training, Department, Enrollment, Certification
+from ..schemas.dashboard import DashboardDataResponse
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 # Your timezone (Asia/Kolkata = IST = UTC+5:30)
 IST = pytz.timezone('Asia/Kolkata')
 
-def calculate_growth(today_total: int, yesterday_total: int) -> float:
-    """Calculate percentage growth from yesterday to today"""
-    if yesterday_total > 0:
-        growth = ((today_total - yesterday_total) / yesterday_total) * 100
-        # Cap unrealistic values
-        if growth > 1000:
-            return 100.0
-        return round(growth, 1)
-    elif today_total > 0 and yesterday_total == 0:
-        return 100.0  # Infinite growth
-    else:
-        return 0.0
-
-def get_local_midnight_utc(local_date):
-    """Convert local date to UTC datetime for that day's midnight"""
-    local_midnight = IST.localize(datetime.combine(local_date, datetime.min.time()))
-    return local_midnight.astimezone(pytz.utc)
-
-@router.get("/dashboard-data", response_model=schemas.DashboardDataResponse)
+@router.get("/dashboard-data", response_model=DashboardDataResponse)
 async def get_dashboard_data(db: Session = Depends(get_db)):
     """
     Returns fully processed dashboard data including:
     - Stats with growth percentages
     - Employee status distribution
-    - Training certifications status
+    - Certification alerts (expiring/expired)
     - Training progress
     - HR metrics
     """
@@ -45,10 +28,6 @@ async def get_dashboard_data(db: Session = Depends(get_db)):
         now_ist = datetime.now(IST)
         today_ist = now_ist.date()
         yesterday_ist = today_ist - timedelta(days=1)
-        
-        # Convert IST dates to UTC for database queries
-        today_midnight_utc = get_local_midnight_utc(today_ist)
-        yesterday_midnight_utc = get_local_midnight_utc(yesterday_ist)
         
         # ===== 1. DASHBOARD STATS =====
         def count_up_to_ist_date(model, date_field, ist_date):
@@ -61,55 +40,60 @@ async def get_dashboard_data(db: Session = Depends(get_db)):
             ).scalar() or 0
         
         # Total counts
-        total_employees = db.query(func.count(models.Employee.id)).scalar() or 0
-        total_trainings = db.query(func.count(models.Training.id)).scalar() or 0
-        total_departments = db.query(func.count(models.Department.id)).scalar() or 0
-        active_enrollments = db.query(func.count(models.Enrollment.id)).filter(
-            models.Enrollment.status.in_(["enrolled", "in_progress"])
+        total_employees = db.query(func.count(Employee.id)).scalar() or 0
+        total_trainings = db.query(func.count(Training.id)).scalar() or 0
+        total_departments = db.query(func.count(Department.id)).scalar() or 0
+        active_enrollments = db.query(func.count(Enrollment.id)).filter(
+            Enrollment.status.in_(["enrolled", "in_progress"])
         ).scalar() or 0
-        total_certifications = db.query(func.count(models.Certification.id)).scalar() or 0
+        total_certifications = db.query(func.count(Certification.id)).scalar() or 0
         
         # Growth calculations
-        employees_yesterday = count_up_to_ist_date(models.Employee, 'created_at', yesterday_ist)
+        employees_yesterday = count_up_to_ist_date(Employee, 'created_at', yesterday_ist)
         employee_growth_percentage = calculate_growth(total_employees, employees_yesterday)
         
-        trainings_yesterday = count_up_to_ist_date(models.Training, 'created_at', yesterday_ist)
+        trainings_yesterday = count_up_to_ist_date(Training, 'created_at', yesterday_ist)
         training_growth_percentage = calculate_growth(total_trainings, trainings_yesterday)
         
-        enrollments_yesterday = count_up_to_ist_date(models.Enrollment, 'enrolled_date', yesterday_ist)
-        total_enrollments = db.query(func.count(models.Enrollment.id)).scalar() or 0
+        enrollments_yesterday = count_up_to_ist_date(Enrollment, 'enrolled_date', yesterday_ist)
+        total_enrollments = db.query(func.count(Enrollment.id)).scalar() or 0
         enrollment_growth_percentage = calculate_growth(total_enrollments, enrollments_yesterday)
         
-        certifications_yesterday = count_up_to_ist_date(models.Certification, 'issued_date', yesterday_ist)
+        certifications_yesterday = count_up_to_ist_date(Certification, 'issued_date', yesterday_ist)
         certification_growth_percentage = calculate_growth(total_certifications, certifications_yesterday)
         
         # Expiring certifications (next 30 days)
         thirty_days_from_now_ist = now_ist + timedelta(days=30)
         thirty_days_from_now_utc = thirty_days_from_now_ist.astimezone(pytz.utc)
         
-        expiring_certifications = db.query(func.count(models.Certification.id)).filter(
-            models.Certification.expires_at <= thirty_days_from_now_utc,
-            models.Certification.expires_at > now_ist.astimezone(pytz.utc),
-            models.Certification.status == "active"
+        expiring_certifications = db.query(func.count(Certification.id)).filter(
+            Certification.expires_at <= thirty_days_from_now_utc,
+            Certification.expires_at > now_ist.astimezone(pytz.utc),
+            Certification.status == "active"
+        ).scalar() or 0
+        
+        # Expired certifications
+        expired_certifications = db.query(func.count(Certification.id)).filter(
+            Certification.status == "expired"
         ).scalar() or 0
         
         # Completion rate
-        completed_enrollments = db.query(func.count(models.Enrollment.id)).filter(
-            models.Enrollment.status == "completed"
+        completed_enrollments = db.query(func.count(Enrollment.id)).filter(
+            Enrollment.status == "completed"
         ).scalar() or 0
-        total_enrollments_count = db.query(func.count(models.Enrollment.id)).scalar() or 1
+        total_enrollments_count = db.query(func.count(Enrollment.id)).scalar() or 1
         completion_rate = round((completed_enrollments / total_enrollments_count) * 100, 1)
         
-        completed_yesterday = count_up_to_ist_date(models.Enrollment, 'completed_date', yesterday_ist)
+        completed_yesterday = count_up_to_ist_date(Enrollment, 'completed_date', yesterday_ist)
         completion_change_percentage = calculate_growth(completed_enrollments, completed_yesterday)
         
         # Total training hours
         total_training_hours_result = db.query(
-            func.sum(models.Training.duration_hours)
-        ).select_from(models.Enrollment).join(
-            models.Training, models.Training.id == models.Enrollment.training_id
+            func.sum(Training.duration_hours)
+        ).select_from(Enrollment).join(
+            Training, Training.id == Enrollment.training_id
         ).filter(
-            models.Enrollment.status == "completed"
+            Enrollment.status == "completed"
         ).scalar()
         total_training_hours = total_training_hours_result or 0
         
@@ -133,39 +117,39 @@ async def get_dashboard_data(db: Session = Depends(get_db)):
         
         # ===== 2. EMPLOYEE STATUS =====
         # Get employees in training (enrolled or in_progress)
-        in_training_subq = db.query(models.Enrollment.employee_id).filter(
-            models.Enrollment.status.in_(["enrolled", "in_progress"])
+        in_training_subq = db.query(Enrollment.employee_id).filter(
+            Enrollment.status.in_(["enrolled", "in_progress"])
         ).distinct().subquery()
         
         # Get certified employees
-        certified_subq = db.query(models.Certification.employee_id).filter(
-            models.Certification.status == "active"
+        certified_subq = db.query(Certification.employee_id).filter(
+            Certification.status == "active"
         ).distinct().subquery()
         
         # Get employees with completed enrollments
-        completed_subq = db.query(models.Enrollment.employee_id).filter(
-            models.Enrollment.status == "completed"
+        completed_subq = db.query(Enrollment.employee_id).filter(
+            Enrollment.status == "completed"
         ).distinct().subquery()
         
         # FIXED: Use correct case() syntax for SQLAlchemy 1.4+
         status_counts_query = db.query(
             func.count(
                 case(
-                    (models.Employee.id.in_(db.query(in_training_subq.c.employee_id)), 1),
+                    (Employee.id.in_(db.query(in_training_subq.c.employee_id)), 1),
                     else_=None
                 )
             ).label('in_training'),
             func.count(
                 case(
-                    (models.Employee.id.in_(db.query(certified_subq.c.employee_id)), 1),
+                    (Employee.id.in_(db.query(certified_subq.c.employee_id)), 1),
                     else_=None
                 )
             ).label('certified'),
             func.count(
                 case(
                     (
-                        ~models.Employee.id.in_(db.query(in_training_subq.c.employee_id)) &
-                        ~models.Employee.id.in_(db.query(certified_subq.c.employee_id)),
+                        ~Employee.id.in_(db.query(in_training_subq.c.employee_id)) &
+                        ~Employee.id.in_(db.query(certified_subq.c.employee_id)),
                         1
                     ),
                     else_=None
@@ -173,25 +157,18 @@ async def get_dashboard_data(db: Session = Depends(get_db)):
             ).label('available'),
             func.count(
                 case(
-                    (models.Employee.id.in_(db.query(completed_subq.c.employee_id)), 1),
+                    (Employee.id.in_(db.query(completed_subq.c.employee_id)), 1),
                     else_=None
                 )
             ).label('completed')
         )
-        
-        status_counts = status_counts_query.scalar()
-        
-        # Handle the tuple result
-        if isinstance(status_counts, tuple):
+    
+        status_counts = status_counts_query.first()
+        if status_counts:
             in_training_count, certified_count, available_count, completed_count = status_counts
         else:
-            # If scalar() returns a single value, we need to adjust
-            in_training_count = status_counts_query.first()
-            if in_training_count:
-                in_training_count, certified_count, available_count, completed_count = in_training_count
-            else:
-                in_training_count = certified_count = available_count = completed_count = 0
-        
+            in_training_count = certified_count = available_count = completed_count = 0
+    
         employee_status = {
             "totalEmployees": total_employees,
             "distribution": [
@@ -223,53 +200,9 @@ async def get_dashboard_data(db: Session = Depends(get_db)):
             "topPerformer": get_top_performer(db, total_trainings)
         }
         
-        # ===== 3. TRAINING CERTIFICATIONS =====
-        enrolled_count = db.query(func.count(models.Enrollment.id)).filter(
-            models.Enrollment.status.in_(["enrolled", "in_progress"])
-        ).scalar() or 0
+        # ===== 3. CERTIFICATION ALERTS (replacing Training Certifications) =====
+        certification_alerts = get_certification_alerts_data(db, now_ist)
         
-        certified_count = db.query(func.count(models.Certification.id)).filter(
-            models.Certification.status == "active"
-        ).scalar() or 0
-        
-        expired_count = db.query(func.count(models.Certification.id)).filter(
-            models.Certification.status == "expired"
-        ).scalar() or 0
-        
-        not_started_count = max(0, total_trainings - enrolled_count - certified_count)
-        
-        training_certifications = {
-            "totalTrainings": total_trainings,
-            "certificationStatuses": [
-                {
-                    "label": "Certified",
-                    "count": certified_count,
-                    "percent": round(certified_count / total_trainings * 100, 1) if total_trainings > 0 else 0,
-                    "color": "#10B981"
-                },
-                {
-                    "label": "In Progress",
-                    "count": enrolled_count,
-                    "percent": round(enrolled_count / total_trainings * 100, 1) if total_trainings > 0 else 0,
-                    "color": "#3B82F6"
-                },
-                {
-                    "label": "Not Started",
-                    "count": not_started_count,
-                    "percent": round(not_started_count / total_trainings * 100, 1) if total_trainings > 0 else 0,
-                    "color": "#6B7280"
-                },
-                {
-                    "label": "Expired",
-                    "count": expired_count,
-                    "percent": round(expired_count / total_trainings * 100, 1) if total_trainings > 0 else 0,
-                    "color": "#EF4444"
-                }
-            ],
-            "expiringSoonCount": expiring_certifications,
-            "expiringAvatars": get_expiring_avatars(db, now_ist),
-            "upcomingDeadlines": get_upcoming_deadlines_count(db, now_ist)
-        }
         
         # ===== 4. TRAINING PROGRESS =====
         training_progress = get_training_progress_data(db)
@@ -280,7 +213,7 @@ async def get_dashboard_data(db: Session = Depends(get_db)):
         return {
             "stats": stats,
             "employeeStatus": employee_status,
-            "trainingCertifications": training_certifications,
+            "certificationAlerts": certification_alerts,
             "trainingProgress": training_progress,
             "hrMetrics": hr_metrics
         }
@@ -290,26 +223,134 @@ async def get_dashboard_data(db: Session = Depends(get_db)):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to process dashboard data: {str(e)}")
-
+    
 
 #Helper functions
+def calculate_growth(today_total: int, yesterday_total: int) -> float:
+    """Calculate percentage growth from yesterday to today"""
+    if yesterday_total > 0:
+        growth = ((today_total - yesterday_total) / yesterday_total) * 100
+        # Cap unrealistic values
+        if growth > 1000:
+            return 100.0
+        return round(growth, 1)
+    elif today_total > 0 and yesterday_total == 0:
+        return 100.0  # Infinite growth
+    else:
+        return 0.0
+
+from datetime import datetime, timedelta
+from typing import Dict, List, Any, Tuple
+import pytz
+
+def get_certification_alerts_data(db: Session, now_ist: datetime) -> Dict[str, Any]:
+    """Get categorized certification alerts for expiring/expired certifications"""
+    try:
+        now_utc = now_ist.astimezone(pytz.utc)
+        thirty_days_from_now_utc = (now_ist + timedelta(days=30)).astimezone(pytz.utc)
+        
+        # Query certifications that are expiring or expired
+        certifications = db.query(
+            Certification,
+            Employee,
+            Training
+        ).join(
+            Employee, Employee.id == Certification.employee_id
+        ).join(
+            Training, Training.id == Certification.training_id
+        ).filter(
+            Certification.expires_at <= thirty_days_from_now_utc,
+            Certification.status.in_(["active", "expired"])
+        ).order_by(
+            Certification.expires_at.asc()
+        ).all()
+        
+        # Initialize categorized lists
+        expired_alerts = []
+        expiring_soon_alerts = []
+        expiring_later_alerts = []
+        
+        for cert, employee, training in certifications:
+            # Determine status
+            if cert.status == "expired" or (cert.expires_at and cert.expires_at < now_utc):
+                status = "expired"
+            elif cert.expires_at and cert.expires_at <= (now_utc + timedelta(days=7)):
+                status = "expiring_soon"
+            else:
+                status = "expiring_later"
+            
+            # Get department
+            dept_name = "Unassigned"
+            if employee.department_id:
+                dept = db.query(Department).filter(Department.id == employee.department_id).first()
+                dept_name = dept.name if dept else "Unknown"
+            
+            # Get avatar
+            first_initial = employee.first_name[0] if employee.first_name else 'E'
+            last_initial = employee.last_name[0] if employee.last_name else 'm'
+            avatar_url = f"https://ui-avatars.com/api/?name={first_initial}{last_initial}&background=random&color=fff&size=40"
+            
+            # Format date
+            expiry_date = ""
+            if cert.expires_at:
+                expiry_date = cert.expires_at.astimezone(IST).strftime("%Y-%m-%d")
+            
+            alert_item = {
+                "id": str(cert.id),
+                "name": f"{employee.first_name or ''} {employee.last_name or ''}".strip() or "Unknown Employee",
+                "role": employee.position or "Employee",
+                "department": dept_name,
+                "certificationName": training.name or "Unknown Certification",
+                "expiryDate": expiry_date,
+                "status": status,
+                "avatarUrl": avatar_url
+            }
+            
+            # Categorize
+            if status == "expired":
+                expired_alerts.append(alert_item)
+            elif status == "expiring_soon":
+                expiring_soon_alerts.append(alert_item)
+            elif status == "expiring_later":
+                expiring_later_alerts.append(alert_item)
+        
+        return {
+            "total": len(expired_alerts) + len(expiring_soon_alerts) + len(expiring_later_alerts),
+            "expired": expired_alerts,
+            "expiring_soon": expiring_soon_alerts,
+            "expiring_later": expiring_later_alerts,
+            "period_label": "30 Days Outlook"
+        }
+        
+    except Exception as e:
+        print(f"Error getting certification alerts: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "total": 0,
+            "expired": [],
+            "expiring_soon": [],
+            "expiring_later": [],
+            "period_label": "30 Days Outlook"
+        }
+
 def get_top_performer(db: Session, total_trainings: int) -> Dict[str, Any]:
     """Get top performing employee based on certifications"""
     try:
         result = db.query(
-            models.Employee.id,
-            models.Employee.first_name,
-            models.Employee.last_name,
-            models.Employee.position,
-            func.count(models.Certification.id).label('cert_count')
+            Employee.id,
+            Employee.first_name,
+            Employee.last_name,
+            Employee.position,
+            func.count(Certification.id).label('cert_count')
         ).join(
-            models.Certification, models.Certification.employee_id == models.Employee.id, isouter=True
+            Certification, Certification.employee_id == Employee.id, isouter=True
         ).filter(
-            models.Certification.status == "active"
+            Certification.status == "active"
         ).group_by(
-            models.Employee.id
+            Employee.id
         ).order_by(
-            func.count(models.Certification.id).desc()
+            func.count(Certification.id).desc()
         ).first()
         
         if result and result.first_name and result.last_name:
@@ -336,15 +377,15 @@ def get_expiring_avatars(db: Session, now_ist: datetime) -> List[str]:
         thirty_days_from_now_utc = thirty_days_from_now_ist.astimezone(pytz.utc)
         
         expiring_employees = db.query(
-            models.Employee.id,
-            models.Employee.first_name,
-            models.Employee.last_name
+            Employee.id,
+            Employee.first_name,
+            Employee.last_name
         ).join(
-            models.Certification, models.Certification.employee_id == models.Employee.id
+            Certification, Certification.employee_id == Employee.id
         ).filter(
-            models.Certification.expires_at <= thirty_days_from_now_utc,
-            models.Certification.expires_at > now_ist.astimezone(pytz.utc),
-            models.Certification.status == "active"
+            Certification.expires_at <= thirty_days_from_now_utc,
+            Certification.expires_at > now_ist.astimezone(pytz.utc),
+            Certification.status == "active"
         ).distinct().limit(4).all()
         
         avatars = []
@@ -366,10 +407,10 @@ def get_upcoming_deadlines_count(db: Session, now_ist: datetime) -> int:
         seven_days_from_now_utc = seven_days_from_now_ist.astimezone(pytz.utc)
         now_utc = now_ist.astimezone(pytz.utc)
         
-        count = db.query(func.count(models.Enrollment.id)).filter(
-            models.Enrollment.end_date <= seven_days_from_now_utc,
-            models.Enrollment.end_date > now_utc,
-            models.Enrollment.status.in_(["enrolled", "in_progress"])
+        count = db.query(func.count(Enrollment.id)).filter(
+            Enrollment.end_date <= seven_days_from_now_utc,
+            Enrollment.end_date > now_utc,
+            Enrollment.status.in_(["enrolled", "in_progress"])
         ).scalar() or 0
         
         return count
@@ -381,15 +422,15 @@ def get_training_progress_data(db: Session) -> List[Dict[str, Any]]:
     """Get training progress data for recent enrollments"""
     try:
         enrollments = db.query(
-            models.Enrollment,
-            models.Employee,
-            models.Training
+            Enrollment,
+            Employee,
+            Training
         ).join(
-            models.Employee, models.Employee.id == models.Enrollment.employee_id
+            Employee, Employee.id == Enrollment.employee_id
         ).join(
-            models.Training, models.Training.id == models.Enrollment.training_id
+            Training, Training.id == Enrollment.training_id
         ).order_by(
-            models.Enrollment.created_at.desc()
+            Enrollment.created_at.desc()
         ).limit(8).all()
         
         progress_data = []
@@ -399,10 +440,10 @@ def get_training_progress_data(db: Session) -> List[Dict[str, Any]]:
         
         for enrollment, employee, training in enrollments:
             # Check if employee has certification for this training
-            has_certification = db.query(models.Certification).filter(
-                models.Certification.employee_id == employee.id,
-                models.Certification.training_id == training.id,
-                models.Certification.status == "active"
+            has_certification = db.query(Certification).filter(
+                Certification.employee_id == employee.id,
+                Certification.training_id == training.id,
+                Certification.status == "active"
             ).first() is not None
             
             # Check if overdue - Compare dates only (ignore timezone)
@@ -462,19 +503,19 @@ def get_hr_metrics_data(db: Session) -> Dict[str, Any]:
     """Get HR metrics data (employees, trainings, departments)"""
     try:
         # Employees
-        employees = db.query(models.Employee).limit(4).all()
+        employees = db.query(Employee).limit(4).all()
         employee_data = []
         
         for emp in employees:
             # Check employee status
-            active_enrollments = db.query(func.count(models.Enrollment.id)).filter(
-                models.Enrollment.employee_id == emp.id,
-                models.Enrollment.status.in_(["enrolled", "in_progress"])
+            active_enrollments = db.query(func.count(Enrollment.id)).filter(
+                Enrollment.employee_id == emp.id,
+                Enrollment.status.in_(["enrolled", "in_progress"])
             ).scalar() or 0
             
-            active_certifications = db.query(func.count(models.Certification.id)).filter(
-                models.Certification.employee_id == emp.id,
-                models.Certification.status == "active"
+            active_certifications = db.query(func.count(Certification.id)).filter(
+                Certification.employee_id == emp.id,
+                Certification.status == "active"
             ).scalar() or 0
             
             status = "Available"
@@ -490,7 +531,7 @@ def get_hr_metrics_data(db: Session) -> Dict[str, Any]:
             # Get department
             dept_name = "Unassigned"
             if emp.department_id:
-                dept = db.query(models.Department).filter(models.Department.id == emp.department_id).first()
+                dept = db.query(Department).filter(Department.id == emp.department_id).first()
                 dept_name = dept.name if dept else f"Dept {emp.department_id}"
             
             # Get avatar
@@ -509,12 +550,12 @@ def get_hr_metrics_data(db: Session) -> Dict[str, Any]:
             })
         
         # Trainings
-        trainings = db.query(models.Training).limit(4).all()
+        trainings = db.query(Training).limit(4).all()
         training_data = []
         
         for train in trainings:
-            enrollment_count = db.query(func.count(models.Enrollment.id)).filter(
-                models.Enrollment.training_id == train.id
+            enrollment_count = db.query(func.count(Enrollment.id)).filter(
+                Enrollment.training_id == train.id
             ).scalar() or 0
             
             training_data.append({
@@ -526,18 +567,18 @@ def get_hr_metrics_data(db: Session) -> Dict[str, Any]:
             })
         
         # Departments
-        departments = db.query(models.Department).limit(4).all()
+        departments = db.query(Department).limit(4).all()
         department_data = []
         
         for dept in departments:
-            employee_count = db.query(func.count(models.Employee.id)).filter(
-                models.Employee.department_id == dept.id
+            employee_count = db.query(func.count(Employee.id)).filter(
+                Employee.department_id == dept.id
             ).scalar() or 0
             
-            training_count = db.query(func.count(models.Enrollment.id)).join(
-                models.Employee, models.Employee.id == models.Enrollment.employee_id
+            training_count = db.query(func.count(Enrollment.id)).join(
+                Employee, Employee.id == Enrollment.employee_id
             ).filter(
-                models.Employee.department_id == dept.id
+                Employee.department_id == dept.id
             ).scalar() or 0
             
             # Get department initials

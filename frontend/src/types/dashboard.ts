@@ -1,4 +1,3 @@
-// types/dashboard.ts
 export interface DashboardStats {
     total_employees: number;
     total_trainings: number;
@@ -34,13 +33,28 @@ export interface EmployeeStatus {
     };
 }
 
-export interface TrainingCertificationStatus {
-    totalTrainings: number;
-    certificationStatuses: StatusDistributionItem[];
-    expiringSoonCount: number;
-    expiringAvatars: string[];
-    upcomingDeadlines: number;
+export interface CertificationAlertItem {
+    id: string;
+    name: string;
+    role: string;
+    department: string;
+    certificationName: string;
+    expiryDate: string;
+    status: "expired" | "expiring_soon" | "expiring_later";
+    avatarUrl: string;
 }
+
+// NEW: Certification alerts response structure
+export interface CertificationAlertsResponse {
+    total: number;
+    expired: CertificationAlertItem[];
+    expiring_soon: CertificationAlertItem[];
+    expiring_later: CertificationAlertItem[];
+    period_label: string;
+}
+
+// OLD: Remove this single array type or keep as alias
+// export type CertificationAlertsArray = CertificationAlertItem[];
 
 export interface TrainingProgressItem {
     id: string;
@@ -75,10 +89,11 @@ export interface HRMetrics {
     departments: HRMetricItem[];
 }
 
+// UPDATED DashboardData interface
 export interface DashboardData {
     stats: DashboardStats;
     employeeStatus: EmployeeStatus;
-    trainingCertifications: TrainingCertificationStatus;
+    certificationAlerts: CertificationAlertsResponse; // Changed from array to structured object
     trainingProgress: TrainingProgressItem[];
     hrMetrics: HRMetrics;
 }

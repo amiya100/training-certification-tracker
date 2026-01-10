@@ -34,6 +34,7 @@ const Certifications: React.FC = () => {
                     apiService.getEmployees(),
                     apiService.getTrainings(),
                 ]);
+            console.log(certificationsData);
 
             setCertifications(certificationsData);
             setEmployees(employeesData);
@@ -63,7 +64,7 @@ const Certifications: React.FC = () => {
         if (expiryFilter !== "all") {
             const today = new Date();
             filtered = filtered.filter((cert) => {
-                const expiryDate = new Date(cert.expiry_date);
+                const expiryDate = new Date(cert.expires_at);
                 const timeDiff = expiryDate.getTime() - today.getTime();
                 const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
 
@@ -214,12 +215,12 @@ const Certifications: React.FC = () => {
 
     // Calculate stats
     const expiredCount = certifications.filter((cert) => {
-        const expiryDate = new Date(cert.expiry_date);
+        const expiryDate = new Date(cert.expires_at);
         return expiryDate < new Date();
     }).length;
 
     const expiringSoonCount = certifications.filter((cert) => {
-        const expiryDate = new Date(cert.expiry_date);
+        const expiryDate = new Date(cert.expires_at);
         const today = new Date();
         const timeDiff = expiryDate.getTime() - today.getTime();
         const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
@@ -227,7 +228,7 @@ const Certifications: React.FC = () => {
     }).length;
 
     const validCount = certifications.filter((cert) => {
-        const expiryDate = new Date(cert.expiry_date);
+        const expiryDate = new Date(cert.expires_at);
         const today = new Date();
         const timeDiff = expiryDate.getTime() - today.getTime();
         const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
@@ -447,12 +448,12 @@ const Certifications: React.FC = () => {
                                             (certification) => {
                                                 const status =
                                                     getCertificateStatus(
-                                                        certification.expiry_date,
+                                                        certification.expires_at,
                                                         certification.status
                                                     );
                                                 const daysUntilExpiry =
                                                     getDaysUntilExpiry(
-                                                        certification.expiry_date
+                                                        certification.expires_at
                                                     );
 
                                                 return (
@@ -483,14 +484,8 @@ const Certifications: React.FC = () => {
                                                                     <div className="text-sm text-gray-300">
                                                                         Issued:{" "}
                                                                         {new Date(
-                                                                            certification.issue_date
+                                                                            certification.issued_date
                                                                         ).toLocaleDateString()}
-                                                                    </div>
-                                                                    <div className="text-xs text-gray-400">
-                                                                        ID:{" "}
-                                                                        {
-                                                                            certification.id
-                                                                        }
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -571,7 +566,7 @@ const Certifications: React.FC = () => {
                                                                             Expires:{" "}
                                                                         </span>
                                                                         {new Date(
-                                                                            certification.expiry_date
+                                                                            certification.expires_at
                                                                         ).toLocaleDateString()}
                                                                     </div>
                                                                     {status ===

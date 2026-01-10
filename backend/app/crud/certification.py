@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from ..models.certification import Certification
 from ..schemas.certification import CertificationCreate, CertificationUpdate
 
@@ -10,6 +10,26 @@ class CRUDCertification:
 
     def get_by_cert_number(self, db: Session, cert_number: str) -> Optional[Certification]:
         return db.query(Certification).filter(Certification.cert_number == cert_number).first()
+
+    def get_by_enrollment(self, db: Session, enrollment_id: int) -> Optional[Certification]:
+        """Get certification by enrollment ID"""
+        return db.query(Certification).filter(Certification.enrollment_id == enrollment_id).first()
+
+    def get_by_employee_training(
+        self,
+        db: Session,
+        employee_id: int,
+        training_id: int
+    ) -> Optional[Certification]:
+        """Get certification for specific employee and training"""
+        return (
+            db.query(Certification)
+            .filter(
+                Certification.employee_id == employee_id,
+                Certification.training_id == training_id
+            )
+            .first()
+        )
 
     def get_multi(self, db: Session, skip: int = 0, limit: int = 100) -> List[Certification]:
         return db.query(Certification).offset(skip).limit(limit).all()
@@ -51,7 +71,7 @@ class CRUDCertification:
         return db.query(Certification).filter(Certification.status == status).all()
 
     def get_expiring_certifications(self, db: Session, days: int = 30) -> List[Certification]:
-        cutoff_date = datetime.utcnow() + datetime.timedelta(days=days)
+        cutoff_date = datetime.utcnow() + timedelta(days=days)
         return db.query(Certification).filter(
             Certification.expires_at <= cutoff_date,
             Certification.expires_at > datetime.utcnow(),

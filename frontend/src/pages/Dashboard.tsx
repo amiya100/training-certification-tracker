@@ -3,11 +3,11 @@ import React, { useState, useEffect, useCallback } from "react";
 import WelcomeSection from "../components/WelcomeSection";
 import StatsGrid from "../components/StatsGrid";
 import EmployeeStatusCard from "../components/EmployeeStatusCard";
-import TrainingCertificationCard from "../components/TrainingCertificationCard";
 import TrainingProgressCard from "../components/TrainingProgressCard";
 import HRMetricsRow from "../components/HRMetricsRow";
 import CreateEnrollmentPopup from "../components/Popups/CreateEnrollmentPopup";
 import ToastContainer from "../components/ToastContainer";
+import CertificationAlert from "../components/CertificationAlert"; // Fixed import name
 import { apiService } from "../services/api";
 import { useToast } from "../hooks/useToast";
 import { type DashboardData } from "../types/dashboard";
@@ -26,6 +26,18 @@ const Dashboard: React.FC = () => {
     const [showCreateEnrollment, setShowCreateEnrollment] = useState(false);
     const { toasts, addToast, removeToast } = useToast();
 
+    // Add handler functions for certification alerts
+    const handleViewAllAlerts = () => {
+        console.log("Navigate to certification alerts page");
+        // window.location.href = '/certifications/alerts';
+    };
+
+    const handleRenewCert = (certificationId: string) => {
+        console.log("Renew certification:", certificationId);
+        // You could open a modal or navigate to renewal page
+        addToast(`Renewing certification ${certificationId}`, "info");
+    };
+
     // Fetch dashboard data from the single processed endpoint
     const fetchDashboardData = useCallback(async () => {
         try {
@@ -33,9 +45,9 @@ const Dashboard: React.FC = () => {
             setError(null);
 
             // Fetch processed dashboard data from single endpoint
-            const processedData = await apiService.getDashboardData();
+            const dashboardData = await apiService.getDashboardData();
             const departmentsData = await apiService.getDepartments();
-            setData(processedData);
+            setData(dashboardData);
             setDepartments(departmentsData);
         } catch (err) {
             console.error("Error fetching dashboard data:", err);
@@ -157,15 +169,14 @@ const Dashboard: React.FC = () => {
                     </DashboardCard>
 
                     <DashboardCard>
-                        <TrainingCertificationCard
-                            data={data.trainingCertifications}
-                            periodLabel="This Month"
+                        <CertificationAlert
+                            title="Certification Alerts"
+                            alerts={data.certificationAlerts || []}
                             loading={loading}
                             error={error}
-                            onViewDetails={() =>
-                                console.log("Navigate to training details")
-                            }
-                            onRetry={fetchDashboardData}
+                            onViewAll={handleViewAllAlerts}
+                            onRenewCert={handleRenewCert}
+                            periodLabel="This Month"
                         />
                     </DashboardCard>
 
@@ -203,20 +214,8 @@ const Dashboard: React.FC = () => {
                 isOpen={showCreateEnrollment}
                 onClose={() => setShowCreateEnrollment(false)}
                 onSave={handleSaveEnrollment}
-                employees={employees.map((emp) => ({
-                    id: emp.id,
-                    name: `${emp.first_name} ${emp.last_name}`,
-                    position: emp.position,
-                    department: departments.find(
-                        (d) => d.id === emp.department_id
-                    )?.name,
-                }))}
-                trainings={trainings.map((train) => ({
-                    id: train.id,
-                    name: train.name,
-                    description: train.description,
-                    duration_hours: train.duration_hours || 0,
-                }))}
+                employees={employees}
+                trainings={trainings}
             />
 
             {/* Toast Container */}

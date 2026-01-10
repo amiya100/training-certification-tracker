@@ -1,7 +1,6 @@
 // HRMetricsRow.tsx
 import React from "react";
-import { type HRItem } from "../types/employee";
-import { type HRMetricsData } from "../types/hr";
+import { type HRItem, type HRMetricsData } from "../types/hr";
 
 interface HRMetricsRowProps {
     data?: HRMetricsData;

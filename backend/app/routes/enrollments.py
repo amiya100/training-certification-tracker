@@ -3,6 +3,9 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from ..database import get_db
 from ..crud import enrollment as crud_enrollment
+from ..crud import certification as crud_certification
+from ..schemas.certification import CertificationCreate
+from datetime import datetime, timedelta
 from ..schemas.enrollment import Enrollment, EnrollmentCreate, EnrollmentUpdate, EnrollmentList
 
 router = APIRouter(prefix="/enrollments", tags=["enrollments"])
@@ -10,7 +13,6 @@ router = APIRouter(prefix="/enrollments", tags=["enrollments"])
 @router.post("/", response_model=Enrollment, status_code=status.HTTP_201_CREATED)
 def create_enrollment(enrollment: EnrollmentCreate, db: Session = Depends(get_db)):
     # Check if employee is already enrolled in this training
-    from ..crud import enrollment as crud_enrollment
     existing_enrollments = crud_enrollment.get_by_employee(db, enrollment.employee_id)
     for existing in existing_enrollments:
         if existing.training_id == enrollment.training_id and existing.status in ["enrolled", "in_progress"]:
@@ -76,11 +78,13 @@ def update_enrollment(
         enrollment_update.completed_date = datetime.utcnow()
         if enrollment_update.progress is None:
             enrollment_update.progress = 100
+            create_certificate_if_not_exists(db, enrollment=obj)
     
     # If progress is 100, auto-mark as completed
     if enrollment_update.progress == 100 and enrollment_update.status is None:
         enrollment_update.status = "completed"
         enrollment_update.completed_date = datetime.utcnow()
+        create_certificate_if_not_exists(db, enrollment=obj)
     
     return crud_enrollment.update(db, db_obj=obj, obj_in=enrollment_update)
 
@@ -95,9 +99,13 @@ def update_enrollment_progress(
     obj = crud_enrollment.update_progress(db, enrollment_id=enrollment_id, progress=progress)
     if not obj:
         raise HTTPException(404, "Enrollment not found")
+    
+    # Create certificate if progress is 100%
+    if progress == 100:
+        create_certificate_if_not_exists(db, enrollment=obj)
+    
     return obj
 
-# NEW ENDPOINT: Mark enrollment as completed (alternative to PUT)
 @router.post("/{enrollment_id}/complete", response_model=Enrollment)
 def complete_enrollment(enrollment_id: int, db: Session = Depends(get_db)):
     """Mark enrollment as completed (sets progress to 100)"""
@@ -105,28 +113,8 @@ def complete_enrollment(enrollment_id: int, db: Session = Depends(get_db)):
     if not obj:
         raise HTTPException(404, "Enrollment not found")
     
-    # Optionally, create a certification automatically
-    from ..crud import certification as crud_certification
-    from ..schemas.certification import CertificationCreate
-    from datetime import datetime, timedelta
-    
-    # Generate certificate number
-    cert_number = f"CERT-{datetime.utcnow().strftime('%Y%m%d')}-{enrollment_id}"
-    
-    # Set expiry date (e.g., 1 year from now)
-    expires_at = datetime.utcnow() + timedelta(days=365)
-    
-    certification_data = CertificationCreate(
-        employee_id=obj.employee_id,
-        training_id=obj.training_id,
-        enrollment_id=obj.id,
-        cert_number=cert_number,
-        expires_at=expires_at,
-        status="active"
-    )
-    
-    # Create certification
-    crud_certification.create(db, obj_in=certification_data)
+    # Create certificate if not already exists
+    create_certificate_if_not_exists(db, enrollment=obj)
     
     return obj
 
@@ -136,3 +124,31 @@ def delete_enrollment(enrollment_id: int, db: Session = Depends(get_db)):
     if not obj:
         raise HTTPException(404, "Enrollment not found")
     return None
+
+
+#Helper function to create certificate on completion of enrollment
+def create_certificate_if_not_exists(db: Session, enrollment):
+    """Helper function to create certificate for completed enrollment"""
+    
+    # Check if certificate already exists for this enrollment
+    existing_cert = crud_certification.get_by_enrollment(db, enrollment_id=enrollment.id)
+    if existing_cert:
+        return existing_cert  # Certificate already exists
+    
+    # Generate certificate number
+    cert_number = f"CERT-{datetime.utcnow().strftime('%Y%m%d')}-{enrollment.id}"
+    
+    # Set expiry date (e.g., 1 year from now)
+    expires_at = datetime.utcnow() + timedelta(days=365)
+    
+    certification_data = CertificationCreate(
+        employee_id=enrollment.employee_id,
+        training_id=enrollment.training_id,
+        enrollment_id=enrollment.id,
+        cert_number=cert_number,
+        expires_at=expires_at,
+        status="active"
+    )
+    
+    # Create certification
+    return crud_certification.create(db, obj_in=certification_data)

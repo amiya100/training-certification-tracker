@@ -119,7 +119,7 @@ const Enrollments: React.FC = () => {
 
     // Handle edit enrollment
     const handleEditEnrollment = useCallback(
-        async (enrollmentId: number, enrollmentData: any) => {
+        async (enrollmentId: number, enrollmentData: EnrollmentFormData) => {
             try {
                 const updatedEnrollment = await apiService.updateEnrollment(
                     enrollmentId,
@@ -821,18 +821,8 @@ const Enrollments: React.FC = () => {
                 isOpen={showCreatePopup}
                 onClose={() => setShowCreatePopup(false)}
                 onSave={handleCreateEnrollment}
-                employees={employees.map((emp) => ({
-                    id: emp.id,
-                    name: `${emp.first_name} ${emp.last_name}`,
-                    position: emp.position || "No position",
-                    department: emp.department?.name,
-                }))}
-                trainings={trainings.map((t) => ({
-                    id: t.id,
-                    name: t.name,
-                    description: t.description,
-                    duration_hours: t.duration_hours,
-                }))}
+                employees={employees}
+                trainings={trainings}
             />
 
             {/* Edit Enrollment Popup */}
@@ -845,18 +835,8 @@ const Enrollments: React.FC = () => {
                     }}
                     onSave={handleEditEnrollment}
                     enrollment={selectedEnrollment}
-                    employees={employees.map((emp) => ({
-                        id: emp.id,
-                        name: `${emp.first_name} ${emp.last_name}`,
-                        position: emp.position || "No position",
-                        department: emp.department?.name,
-                    }))}
-                    trainings={trainings.map((t) => ({
-                        id: t.id,
-                        name: t.name,
-                        description: t.description,
-                        duration_hours: t.duration_hours,
-                    }))}
+                    employees={employees}
+                    trainings={trainings}
                 />
             )}
 

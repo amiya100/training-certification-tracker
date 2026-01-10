@@ -1,5 +1,5 @@
 // App.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
 import Dashboard from "./pages/Dashboard";
@@ -8,10 +8,7 @@ import Employees from "./pages/Employees";
 import Trainings from "./pages/Trainings";
 import Enrollments from "./pages/Enrollments";
 import Certifications from "./pages/Certifications";
-// import Employees from "./pages/Employees";
-// import Trainings from "./pages/Trainings";
-// import Enrollments from "./pages/Enrollments";
-// import Certifications from "./pages/Certifications";
+import ComplianceReport from "./pages/ComplianceReport";
 
 export type MenuItemType =
     | "dashboard"
@@ -19,11 +16,37 @@ export type MenuItemType =
     | "employees"
     | "trainings"
     | "enrollments"
-    | "certifications";
+    | "certifications"
+    | "complianceReport";
+
+const STORAGE_KEY = "activeMenuItem";
 
 const App: React.FC = () => {
-    const [activeMenuItem, setActiveMenuItem] =
-        useState<MenuItemType>("dashboard");
+    // Initialize state with saved value or default
+    const [activeMenuItem, setActiveMenuItem] = useState<MenuItemType>(() => {
+        // Try to get saved value from localStorage
+        const saved = localStorage.getItem(STORAGE_KEY);
+        // Validate that the saved value is a valid MenuItemType
+        const validItems: MenuItemType[] = [
+            "dashboard",
+            "departments",
+            "employees",
+            "trainings",
+            "enrollments",
+            "certifications",
+            "complianceReport",
+        ];
+        if (saved && validItems.includes(saved as MenuItemType)) {
+            return saved as MenuItemType;
+        }
+        // Return default if no valid saved value
+        return "dashboard";
+    });
+
+    // Save to localStorage whenever activeMenuItem changes
+    useEffect(() => {
+        localStorage.setItem(STORAGE_KEY, activeMenuItem);
+    }, [activeMenuItem]);
 
     const renderContent = () => {
         switch (activeMenuItem) {
@@ -39,6 +62,8 @@ const App: React.FC = () => {
                 return <Enrollments />;
             case "certifications":
                 return <Certifications />;
+            case "complianceReport":
+                return <ComplianceReport />;
             default:
                 return <Dashboard />;
         }

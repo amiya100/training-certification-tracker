@@ -33,7 +33,7 @@ def read_employees(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
-    department_id: Optional[int] = Query(None, description="Filter by department ID"),  # Fixed parameter name
+    department_id: Optional[int] = Query(None, description="Filter by department ID"),  
     db: Session = Depends(get_db)
 ):
     employees = crud_employee.get_multi(

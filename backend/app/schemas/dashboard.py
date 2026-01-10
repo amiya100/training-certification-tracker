@@ -1,6 +1,6 @@
 # app/schemas/dashboard.py
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import date
 
 class StatusDistributionItem(BaseModel):
@@ -19,12 +19,23 @@ class EmployeeStatus(BaseModel):
     distribution: List[StatusDistributionItem]
     topPerformer: TopPerformer
 
-class TrainingCertificationStatus(BaseModel):
-    totalTrainings: int
-    certificationStatuses: List[StatusDistributionItem]
-    expiringSoonCount: int
-    expiringAvatars: List[str]
-    upcomingDeadlines: int
+class CertificationAlertItem(BaseModel):
+    id: str
+    name: str
+    role: str
+    department: str
+    certificationName: str
+    expiryDate: str
+    status: str  # "expired", "expiring_soon", "expiring_later"
+    avatarUrl: str
+
+class CertificationAlertsResponse(BaseModel):
+    """Categorized certification alerts"""
+    total: int
+    expired: List[CertificationAlertItem]
+    expiring_soon: List[CertificationAlertItem]
+    expiring_later: List[CertificationAlertItem]
+    period_label: str = "30 Days Outlook"
 
 class TrainingProgressItem(BaseModel):
     id: str
@@ -76,6 +87,6 @@ class DashboardStats(BaseModel):
 class DashboardDataResponse(BaseModel):
     stats: DashboardStats
     employeeStatus: EmployeeStatus
-    trainingCertifications: TrainingCertificationStatus
+    certificationAlerts: CertificationAlertsResponse
     trainingProgress: List[TrainingProgressItem]
     hrMetrics: HRMetrics

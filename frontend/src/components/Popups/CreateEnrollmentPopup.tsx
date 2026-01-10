@@ -1,29 +1,8 @@
 // components/CreateEnrollmentPopup.tsx
 import React, { useState, useEffect } from "react";
-
-interface Employee {
-    id: number;
-    name: string;
-    position: string;
-    department?: string;
-    avatarUrl?: string;
-}
-
-interface Training {
-    id: number;
-    name: string;
-    description: string;
-    duration_hours: number;
-}
-
-interface EnrollmentFormData {
-    employee_id: number | "";
-    training_id: number | "";
-    status: "enrolled" | "in_progress";
-    start_date: string;
-    end_date: string;
-    progress?: number;
-}
+import type { Employee } from "../../types/employee";
+import type { Training } from "../../types/training";
+import type { EnrollmentFormData } from "../../types/enrollment";
 
 interface CreateEnrollmentPopupProps {
     isOpen: boolean;
@@ -300,10 +279,10 @@ const CreateEnrollmentPopup: React.FC<CreateEnrollmentPopupProps> = ({
                                                     key={employee.id}
                                                     value={employee.id}
                                                 >
-                                                    {employee.name} -{" "}
-                                                    {employee.position}
+                                                    {`${employee.first_name} ${employee.last_name}`}{" "}
+                                                    - {employee.position}
                                                     {employee.department
-                                                        ? ` (${employee.department})`
+                                                        ? ` (${employee.department.name})`
                                                         : ""}
                                                 </option>
                                             ))}

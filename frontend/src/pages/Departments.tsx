@@ -2,11 +2,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { apiService } from "../services/api";
 import { useToast } from "../hooks/useToast";
-import {
-    type Department,
-    type DepartmentFormData,
-    type DepartmentUpdateData,
-} from "../types/department";
+import { type Department, type DepartmentFormData } from "../types/department";
 import ToastContainer from "../components/ToastContainer";
 import AddDepartmentPopup from "../components/Popups/AddDepartmentPopup";
 import EditDepartmentPopup from "../components/Popups/EditDepartmentPopup";
@@ -32,6 +28,7 @@ const Departments: React.FC = () => {
             setError(null);
 
             const departmentsData = await apiService.getDepartments();
+
             setDepartments(departmentsData);
             setFilteredDepartments(departmentsData);
         } catch (err) {
@@ -89,20 +86,17 @@ const Departments: React.FC = () => {
     );
 
     // Handle edit department
-    // Departments.tsx
     const handleEditDepartment = useCallback(
-        async (departmentData: DepartmentUpdateData) => {
+        async (
+            departmentData: DepartmentFormData & {
+                id: number;
+            }
+        ) => {
             try {
-                // Send the full department object to API
-                const updatedDepartment = await apiService.updateDepartment({
-                    id: departmentData.id,
-                    name: departmentData.name,
-                    description: departmentData.description,
-                    // These will be ignored or handled by backend
-                    total_employees: 0, // This will be overwritten by backend
-                    created_at: undefined,
-                    updated_at: undefined,
-                });
+                // Just send the data as-is
+                const updatedDepartment = await apiService.updateDepartment(
+                    departmentData
+                );
 
                 setDepartments((prev) =>
                     prev.map((dept) =>

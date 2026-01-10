@@ -7,12 +7,22 @@ from .dashboard import (
     StatusDistributionItem,
     TopPerformer,
     EmployeeStatus,
-    TrainingCertificationStatus,
+    CertificationAlertItem,  # Changed from TrainingCertificationStatus
     TrainingProgressItem,
     HRMetricItem,
     HRMetrics,
     DashboardStats,
     DashboardDataResponse
+)
+
+# Add compliance schemas
+from .compliance import (
+    DepartmentCompliance,
+    CertificationStatus,
+    UpcomingExpiration,
+    MissingCertification,
+    ReportFilters,
+    ComplianceMetrics
 )
 
 __all__ = [
@@ -44,10 +54,18 @@ __all__ = [
     "StatusDistributionItem",
     "TopPerformer",
     "EmployeeStatus",
-    "TrainingCertificationStatus",
+    "CertificationAlertItem",  # Changed from TrainingCertificationStatus
     "TrainingProgressItem",
     "HRMetricItem",
     "HRMetrics",
     "DashboardStats",
-    "DashboardDataResponse"
+    "DashboardDataResponse",
+    
+    # Compliance
+    "DepartmentCompliance",
+    "CertificationStatus",
+    "UpcomingExpiration",
+    "MissingCertification",
+    "ReportFilters",
+    "ComplianceMetrics"
 ]

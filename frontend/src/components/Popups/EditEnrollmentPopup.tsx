@@ -1,20 +1,8 @@
 // components/EditEnrollmentPopup.tsx
 import React, { useState, useEffect } from "react";
 import { type Enrollment } from "../../types/enrollment";
-
-interface Employee {
-    id: number;
-    name: string;
-    position: string;
-    department?: string;
-}
-
-interface Training {
-    id: number;
-    name: string;
-    description: string;
-    duration_hours: number;
-}
+import type { Employee } from "../../types/employee";
+import type { Training } from "../../types/training";
 
 interface EditEnrollmentPopupProps {
     isOpen: boolean;
@@ -259,10 +247,10 @@ const EditEnrollmentPopup: React.FC<EditEnrollmentPopupProps> = ({
                                                     key={employee.id}
                                                     value={employee.id}
                                                 >
-                                                    {employee.name} -{" "}
-                                                    {employee.position}
+                                                    {`${employee.first_name} ${employee.last_name}`}{" "}
+                                                    - {employee.position}
                                                     {employee.department
-                                                        ? ` (${employee.department})`
+                                                        ? ` (${employee.department.name})`
                                                         : ""}
                                                 </option>
                                             ))}

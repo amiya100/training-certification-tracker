@@ -1,10 +1,5 @@
 // employee.ts
-
-export interface Department {
-    id: number;
-    name: string;
-    description?: string;
-}
+import { type Department } from "./department";
 
 export interface Employee {
     id: number;
@@ -31,32 +26,9 @@ export interface EmployeeFormData {
     hire_date: string;
 }
 
-export interface EmployeeStatusData {
-    totalEmployees: number;
-    distribution: Array<{
-        label: string;
-        count: number;
-        percent: number;
-        color: string;
-    }>;
-    topPerformer: TopPerformer;
-}
-
-export interface TopPerformer {
-    name: string;
-    role: string;
-    performance: number;
-    avatarUrl?: string;
-}
-
-export interface HRItem {
-    id: string;
-    avatarUrl?: string;
-    name: string;
-    role?: string;
-    status?: string;
-    statusColor?: string;
-    departmentName?: string;
-    employeeCount?: number;
-    trainingCount?: number;
+export interface EmployeeListResponse {
+    employees: Employee[];
+    total: number;
+    skip: number;
+    limit: number;
 }

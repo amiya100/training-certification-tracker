@@ -75,6 +75,7 @@ class CRUDDepartment:
         
         return department
     
+    #get departments linked to frontend
     def get_all_with_employee_counts(self, db: Session, skip: int = 0, limit: int = 100) -> List[Department]:
         """Get all departments with their employee counts"""
         departments = (

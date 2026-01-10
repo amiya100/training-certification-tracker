@@ -19,6 +19,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         { label: "Trainings", type: "trainings" },
         { label: "Enrollments", type: "enrollments" },
         { label: "Certifications", type: "certifications" },
+        { label: "Compliance Report", type: "complianceReport" },
     ];
 
     return (

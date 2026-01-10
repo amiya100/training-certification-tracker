@@ -14,15 +14,8 @@ export interface DepartmentFormData {
     description?: string;
 }
 
-// For update API call - needs id + form data
-export interface DepartmentUpdateData {
-    id: number;
-    name: string;
-    description?: string;
-}
-
 // For API response
-export interface DepartmentApiResponse {
+export interface DepartmentListResponses {
     departments: Department[];
     total: number;
     skip: number;

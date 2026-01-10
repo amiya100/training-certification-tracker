@@ -1,26 +1,23 @@
-// api.ts
-import { type Employee } from "../types/employee";
-import { type Training, type TrainingFormData } from "../types/training";
+// api.ts - Updated with compliance methods
+import { type Employee, type EmployeeListResponse } from "../types/employee";
+import {
+    type Training,
+    type TrainingFormData,
+    type TrainingListResponse,
+} from "../types/training";
 import { type Enrollment, type EnrollmentFormData } from "../types/enrollment";
 import { type Certification } from "../types/certification";
-import { type Department } from "../types/department";
+import {
+    type Department,
+    type DepartmentFormData,
+    type DepartmentListResponses,
+} from "../types/department";
+import {
+    type ReportFilters,
+    type ComplianceMetrics,
+} from "../types/compliance";
 
 const API_BASE = "http://localhost:8000";
-
-// Add these interfaces for API responses
-interface DepartmentListResponse {
-    departments: Department[];
-    total: number;
-    skip: number;
-    limit: number;
-}
-
-interface TrainingListResponse {
-    trainings: Training[];
-    total: number;
-    skip: number;
-    limit: number;
-}
 
 class ApiService {
     private async fetchWithError<T>(
@@ -47,10 +44,10 @@ class ApiService {
 
     // Employees
     async getEmployees(): Promise<Employee[]> {
-        const data = await this.fetchWithError<
-            { employees: Employee[] } | Employee[]
-        >("/employees");
-        return Array.isArray(data) ? data : data.employees || [];
+        const data = await this.fetchWithError<EmployeeListResponse>(
+            "/employees"
+        );
+        return data.employees || [];
     }
 
     async createEmployee(employeeData: any): Promise<Employee> {
@@ -75,16 +72,45 @@ class ApiService {
         });
     }
 
+    // Departments
+    async getDepartments(): Promise<Department[]> {
+        const data = await this.fetchWithError<DepartmentListResponses>(
+            "/departments"
+        );
+        return data.departments || [];
+    }
+
+    async createDepartment(departmentData: any): Promise<Department> {
+        const response = await this.fetchWithError<Department>("/departments", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(departmentData),
+        });
+        return response;
+    }
+
+    async updateDepartment(
+        departmentData: DepartmentFormData & { id: number }
+    ): Promise<Department> {
+        return this.fetchWithError(`/departments/${departmentData.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(departmentData),
+        });
+    }
+
+    async deleteDepartment(departmentId: number) {
+        return this.fetchWithError(`/departments/${departmentId}`, {
+            method: "DELETE",
+        });
+    }
+
     // Trainings
     async getTrainings(): Promise<Training[]> {
         const data = await this.fetchWithError<TrainingListResponse>(
             "/trainings"
         );
         return data.trainings || [];
-    }
-
-    async getTraining(trainingId: number): Promise<Training> {
-        return this.fetchWithError<Training>(`/trainings/${trainingId}`);
     }
 
     async createTraining(trainingData: TrainingFormData): Promise<Training> {
@@ -114,7 +140,6 @@ class ApiService {
     }
 
     // Enrollments
-    // Add to api.ts
     async getEnrollments(): Promise<Enrollment[]> {
         const data = await this.fetchWithError<
             { enrollments: Enrollment[] } | Enrollment[]
@@ -134,7 +159,7 @@ class ApiService {
 
     async updateEnrollment(
         enrollmentId: number,
-        enrollmentData: any
+        enrollmentData: EnrollmentFormData
     ): Promise<Enrollment> {
         return this.fetchWithError<Enrollment>(`/enrollments/${enrollmentId}`, {
             method: "PUT",
@@ -180,34 +205,55 @@ class ApiService {
         return Array.isArray(data) ? data : data.certifications || [];
     }
 
-    // Departments
-    async getDepartments(): Promise<Department[]> {
-        const data = await this.fetchWithError<DepartmentListResponse>(
-            "/departments"
+    // Compliance Report Methods
+    async getComplianceReport(
+        filters: ReportFilters
+    ): Promise<ComplianceMetrics> {
+        const response = await this.fetchWithError<ComplianceMetrics>(
+            "/api/compliance/report",
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(filters),
+            }
         );
-        return data.departments || [];
-    }
-
-    async createDepartment(departmentData: any): Promise<Department> {
-        const response = await this.fetchWithError<Department>("/departments", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(departmentData),
-        });
         return response;
     }
 
-    async updateDepartment(departmentData: Department): Promise<Department> {
-        return this.fetchWithError(`/departments/${departmentData.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(departmentData),
-        });
+    async exportComplianceReport(
+        filters: ReportFilters,
+        format: "pdf" | "excel"
+    ): Promise<void> {
+        const response = await fetch(
+            `${API_BASE}/api/compliance/export/${format}`,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(filters),
+            }
+        );
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API Error ${response.status}: ${errorText}`);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `compliance-report-${
+            new Date().toISOString().split("T")[0]
+        }.${format}`;
+        a.click();
+        window.URL.revokeObjectURL(url);
     }
 
-    async deleteDepartment(departmentId: number) {
-        return this.fetchWithError(`/departments/${departmentId}`, {
-            method: "DELETE",
+    async emailComplianceReport(filters: ReportFilters): Promise<void> {
+        await this.fetchWithError<void>("/api/compliance/email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(filters),
         });
     }
 }

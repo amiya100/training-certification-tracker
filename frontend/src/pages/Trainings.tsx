@@ -508,28 +508,6 @@ const getTrainingColor = (name: string): string => {
     return colors[index];
 };
 
-// Helper function for category colors
-const getCategoryColor = (category: string): string => {
-    const colors = [
-        "bg-orange-600",
-        "bg-blue-600",
-        "bg-emerald-600",
-        "bg-purple-600",
-        "bg-amber-600",
-        "bg-pink-600",
-        "bg-cyan-600",
-        "bg-indigo-600",
-        "bg-teal-600",
-        "bg-rose-600",
-        "bg-violet-600",
-    ];
-
-    const index =
-        category.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) %
-        colors.length;
-    return colors[index];
-};
-
 // Loading Skeleton
 const TrainingsSkeleton = () => (
     <div className="p-5 space-y-5">

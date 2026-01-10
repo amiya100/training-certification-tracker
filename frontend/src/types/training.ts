@@ -10,6 +10,7 @@ export interface Training {
     updated_at: string;
 }
 
+//Creating training from form data
 export interface TrainingFormData {
     name: string;
     description: string;
@@ -27,4 +28,12 @@ export interface TrainingCertificationData {
     expiringSoonCount: number;
     expiringAvatars: string[];
     upcomingDeadlines: number;
+}
+
+//Get trainings api response
+export interface TrainingListResponse {
+    trainings: Training[];
+    total: number;
+    skip: number;
+    limit: number;
 }
