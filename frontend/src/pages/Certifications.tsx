@@ -7,7 +7,13 @@ import { type Employee } from "../types/employee";
 import { type Training } from "../types/training";
 import ToastContainer from "../components/ToastContainer";
 
-const Certifications: React.FC = () => {
+interface CertificationsProps {
+    onViewCertificate?: (certificateId: number) => void;
+}
+
+const Certifications: React.FC<CertificationsProps> = ({
+    onViewCertificate,
+}) => {
     const [certifications, setCertifications] = useState<Certification[]>([]);
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [trainings, setTrainings] = useState<Training[]>([]);
@@ -18,7 +24,6 @@ const Certifications: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState<string>("");
     const [statusFilter, setStatusFilter] = useState<string>("all");
-    const [expiryFilter, setExpiryFilter] = useState<string>("all");
     const { toasts, addToast, removeToast } = useToast();
 
     // Fetch data
@@ -54,34 +59,17 @@ const Certifications: React.FC = () => {
     // Handle search and filters
     useEffect(() => {
         let filtered = certifications;
+        console.log(filtered);
 
-        // Apply status filter
+        // Apply status filter - FIXED: Compare with case-insensitive
         if (statusFilter !== "all") {
-            filtered = filtered.filter((cert) => cert.status === statusFilter);
+            filtered = filtered.filter(
+                (cert) =>
+                    cert.status.toLowerCase() === statusFilter.toLowerCase()
+            );
         }
 
-        // Apply expiry filter
-        if (expiryFilter !== "all") {
-            const today = new Date();
-            filtered = filtered.filter((cert) => {
-                const expiryDate = new Date(cert.expires_at);
-                const timeDiff = expiryDate.getTime() - today.getTime();
-                const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-
-                switch (expiryFilter) {
-                    case "expired":
-                        return expiryDate < today;
-                    case "expiring_soon":
-                        return daysDiff > 0 && daysDiff <= 30;
-                    case "valid":
-                        return daysDiff > 30;
-                    default:
-                        return true;
-                }
-            });
-        }
-
-        // Apply search filter
+        // Apply search filter - FIXED: Search with case-insensitive
         if (searchTerm.trim()) {
             const searchLower = searchTerm.toLowerCase();
             filtered = filtered.filter((certification) => {
@@ -100,67 +88,33 @@ const Certifications: React.FC = () => {
                     employee?.last_name?.toLowerCase().includes(searchLower) ||
                     employee?.email?.toLowerCase().includes(searchLower) ||
                     training?.name?.toLowerCase().includes(searchLower) ||
-                    certification.status?.toLowerCase().includes(searchLower)
+                    certification.status?.toLowerCase().includes(searchLower) // FIXED
                 );
             });
         }
 
         setFilteredCertifications(filtered);
-    }, [
-        searchTerm,
-        statusFilter,
-        expiryFilter,
-        certifications,
-        employees,
-        trainings,
-    ]);
+    }, [searchTerm, statusFilter, certifications, employees, trainings]);
 
-    // Handle download certificate (placeholder)
-    const handleDownloadCertificate = useCallback(
-        async (certificationId: number) => {
-            try {
-                addToast("Certificate download started!", "info");
-                // Implement actual download logic here
-                console.log("Downloading certificate:", certificationId);
-            } catch (error) {
-                console.error("Error downloading certificate:", error);
-                const errorMessage =
-                    error instanceof Error
-                        ? error.message
-                        : "Failed to download certificate";
-                addToast(errorMessage, "error");
-            }
-        },
-        [addToast]
-    );
+    // Add this helper function near other helper functions
+    const canViewCertificate = (expiryDate: string): boolean => {
+        const today = new Date();
+        const expiry = new Date(expiryDate);
+        return expiry >= today; // Only allow viewing if not expired yet
+    };
 
-    // Handle view certificate (placeholder)
+    // Handle view certificate
     const handleViewCertificate = useCallback(
         (certificationId: number) => {
-            // Navigate to certificate view page or open modal
-            console.log("Viewing certificate:", certificationId);
-            addToast("Opening certificate view...", "info");
-        },
-        [addToast]
-    );
-
-    // Handle renew certificate (placeholder)
-    const handleRenewCertificate = useCallback(
-        async (certificationId: number) => {
-            try {
-                // Implement renew logic here
-                console.log("Renewing certificate:", certificationId);
-                addToast("Certificate renewal requested!", "info");
-            } catch (error) {
-                console.error("Error renewing certificate:", error);
-                const errorMessage =
-                    error instanceof Error
-                        ? error.message
-                        : "Failed to renew certificate";
-                addToast(errorMessage, "error");
+            if (onViewCertificate) {
+                onViewCertificate(certificationId);
+            } else {
+                // Fallback if onViewCertificate not provided
+                console.log("Viewing certificate:", certificationId);
+                addToast("Opening certificate view...", "info");
             }
         },
-        [addToast]
+        [onViewCertificate, addToast]
     );
 
     // Initial fetch
@@ -186,9 +140,7 @@ const Certifications: React.FC = () => {
         return employee?.department?.name || "No Department";
     };
 
-    const getCertificateStatus = (expiryDate: string, status: string) => {
-        if (status === "revoked") return "revoked";
-
+    const getCertificateStatus = (expiryDate: string) => {
         const today = new Date();
         const expiry = new Date(expiryDate);
 
@@ -234,10 +186,6 @@ const Certifications: React.FC = () => {
         const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
         return daysDiff > 30;
     }).length;
-
-    const revokedCount = certifications.filter(
-        (cert) => cert.status === "revoked"
-    ).length;
 
     return (
         <>
@@ -287,26 +235,15 @@ const Certifications: React.FC = () => {
                                 }
                                 className="px-4 py-2 bg-white/5 backdrop-blur-sm border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                             >
-                                <option value="all">All Status</option>
-                                <option value="active">Active</option>
-                                <option value="expired">Expired</option>
-                                <option value="revoked">Revoked</option>
-                            </select>
-                            <select
-                                value={expiryFilter}
-                                onChange={(e) =>
-                                    setExpiryFilter(e.target.value)
-                                }
-                                className="px-4 py-2 bg-white/5 backdrop-blur-sm border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                            >
-                                <option value="all">All Expiry</option>
-                                <option value="valid">
-                                    Valid (&gt; 30 days)
+                                <option value="all" className="text-black">
+                                    All Status
                                 </option>
-                                <option value="expiring_soon">
-                                    Expiring Soon (≤ 30 days)
+                                <option value="active" className="text-black">
+                                    Active
                                 </option>
-                                <option value="expired">Expired</option>
+                                <option value="expired" className="text-black">
+                                    Expired
+                                </option>
                             </select>
                         </div>
                     </div>
@@ -374,8 +311,8 @@ const Certifications: React.FC = () => {
                     />
 
                     <StatCard
-                        title="Expired/Revoked"
-                        value={(expiredCount + revokedCount).toString()}
+                        title="Expired"
+                        value={expiredCount.toString()}
                         icon={
                             <svg
                                 className="w-6 h-6 text-white"
@@ -413,9 +350,7 @@ const Certifications: React.FC = () => {
                                 No certifications found
                             </h3>
                             <p className="text-gray-300 mb-4">
-                                {searchTerm ||
-                                statusFilter !== "all" ||
-                                expiryFilter !== "all"
+                                {searchTerm || statusFilter !== "all"
                                     ? "Try different search criteria"
                                     : "Certifications will appear here after completing enrollments"}
                             </p>
@@ -439,7 +374,7 @@ const Certifications: React.FC = () => {
                                                 Validity
                                             </th>
                                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
-                                                Actions
+                                                View
                                             </th>
                                         </tr>
                                     </thead>
@@ -448,8 +383,7 @@ const Certifications: React.FC = () => {
                                             (certification) => {
                                                 const status =
                                                     getCertificateStatus(
-                                                        certification.expires_at,
-                                                        certification.status
+                                                        certification.expires_at
                                                     );
                                                 const daysUntilExpiry =
                                                     getDaysUntilExpiry(
@@ -591,100 +525,69 @@ const Certifications: React.FC = () => {
                                                                             ago
                                                                         </div>
                                                                     )}
-                                                                    {status ===
-                                                                        "revoked" && (
-                                                                        <div className="text-red-300 text-xs mt-1">
-                                                                            Certificate
-                                                                            revoked
-                                                                        </div>
-                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </td>
                                                         <td className="px-6 py-4">
-                                                            <div className="flex items-center space-x-2">
-                                                                <button
-                                                                    onClick={() =>
-                                                                        handleViewCertificate(
-                                                                            certification.id
-                                                                        )
-                                                                    }
-                                                                    className="p-2 text-gray-400 hover:text-amber-400 hover:bg-white/5 rounded-lg transition-colors duration-200"
-                                                                    title="View Certificate"
-                                                                >
-                                                                    <svg
-                                                                        className="w-5 h-5"
-                                                                        fill="none"
-                                                                        stroke="currentColor"
-                                                                        viewBox="0 0 24 24"
+                                                            <div className="flex items-center space-x-1">
+                                                                {canViewCertificate(
+                                                                    certification.expires_at
+                                                                ) ? (
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            handleViewCertificate(
+                                                                                certification.id
+                                                                            )
+                                                                        }
+                                                                        className="p-2 text-gray-400 hover:text-amber-400 hover:bg-white/5 rounded-lg transition-colors duration-200"
+                                                                        title="View Certificate"
                                                                     >
-                                                                        <path
-                                                                            strokeLinecap="round"
-                                                                            strokeLinejoin="round"
-                                                                            strokeWidth="2"
-                                                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                                                                        />
-                                                                        <path
-                                                                            strokeLinecap="round"
-                                                                            strokeLinejoin="round"
-                                                                            strokeWidth="2"
-                                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                                                                        />
-                                                                    </svg>
-                                                                </button>
-                                                                <button
-                                                                    onClick={() =>
-                                                                        handleDownloadCertificate(
-                                                                            certification.id
-                                                                        )
-                                                                    }
-                                                                    className="p-2 text-gray-400 hover:text-blue-400 hover:bg-white/5 rounded-lg transition-colors duration-200"
-                                                                    title="Download Certificate"
-                                                                >
-                                                                    <svg
-                                                                        className="w-5 h-5"
-                                                                        fill="none"
-                                                                        stroke="currentColor"
-                                                                        viewBox="0 0 24 24"
-                                                                    >
-                                                                        <path
-                                                                            strokeLinecap="round"
-                                                                            strokeLinejoin="round"
-                                                                            strokeWidth="2"
-                                                                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                                                        />
-                                                                    </svg>
-                                                                </button>
-                                                                {(status ===
-                                                                    "expiring_soon" ||
-                                                                    status ===
-                                                                        "expired") &&
-                                                                    certification.status !==
-                                                                        "revoked" && (
-                                                                        <button
-                                                                            onClick={() =>
-                                                                                handleRenewCertificate(
-                                                                                    certification.id
-                                                                                )
-                                                                            }
-                                                                            className="p-2 text-gray-400 hover:text-green-400 hover:bg-white/5 rounded-lg transition-colors duration-200"
-                                                                            title="Renew Certificate"
+                                                                        <svg
+                                                                            className="w-5 h-5"
+                                                                            fill="none"
+                                                                            stroke="currentColor"
+                                                                            viewBox="0 0 24 24"
                                                                         >
-                                                                            <svg
-                                                                                className="w-5 h-5"
-                                                                                fill="none"
-                                                                                stroke="currentColor"
-                                                                                viewBox="0 0 24 24"
-                                                                            >
-                                                                                <path
-                                                                                    strokeLinecap="round"
-                                                                                    strokeLinejoin="round"
-                                                                                    strokeWidth="2"
-                                                                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                                                                                />
-                                                                            </svg>
-                                                                        </button>
-                                                                    )}
+                                                                            <path
+                                                                                strokeLinecap="round"
+                                                                                strokeLinejoin="round"
+                                                                                strokeWidth="2"
+                                                                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                                                            />
+                                                                            <path
+                                                                                strokeLinecap="round"
+                                                                                strokeLinejoin="round"
+                                                                                strokeWidth="2"
+                                                                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                                                            />
+                                                                        </svg>
+                                                                    </button>
+                                                                ) : (
+                                                                    <div
+                                                                        className="p-2 text-gray-600 cursor-not-allowed"
+                                                                        title="Certificate expired"
+                                                                    >
+                                                                        <svg
+                                                                            className="w-5 h-5"
+                                                                            fill="none"
+                                                                            stroke="currentColor"
+                                                                            viewBox="0 0 24 24"
+                                                                        >
+                                                                            <path
+                                                                                strokeLinecap="round"
+                                                                                strokeLinejoin="round"
+                                                                                strokeWidth="2"
+                                                                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                                                            />
+                                                                            <path
+                                                                                strokeLinecap="round"
+                                                                                strokeLinejoin="round"
+                                                                                strokeWidth="2"
+                                                                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                                                            />
+                                                                        </svg>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -709,20 +612,18 @@ const Certifications: React.FC = () => {
                                     certifications
                                 </div>
                                 <div className="flex gap-2">
-                                    {(searchTerm ||
-                                        statusFilter !== "all" ||
-                                        expiryFilter !== "all") && (
-                                        <button
-                                            onClick={() => {
-                                                setSearchTerm("");
-                                                setStatusFilter("all");
-                                                setExpiryFilter("all");
-                                            }}
-                                            className="px-4 py-2 text-sm bg-white/5 backdrop-blur-sm border border-white/20 rounded-lg text-gray-300 hover:text-white hover:border-white/30 transition-all duration-300"
-                                        >
-                                            Clear Filters
-                                        </button>
-                                    )}
+                                    {searchTerm ||
+                                        (statusFilter !== "all" && (
+                                            <button
+                                                onClick={() => {
+                                                    setSearchTerm("");
+                                                    setStatusFilter("all");
+                                                }}
+                                                className="px-4 py-2 text-sm bg-white/5 backdrop-blur-sm border border-white/20 rounded-lg text-gray-300 hover:text-white hover:border-white/30 transition-all duration-300"
+                                            >
+                                                Clear Filters
+                                            </button>
+                                        ))}
                                 </div>
                             </div>
                         </>
@@ -796,8 +697,6 @@ const getCertificateStatusColor = (status: string): string => {
             return "bg-orange-500/20 text-orange-300 border border-orange-500/40";
         case "expired":
             return "bg-red-500/20 text-red-300 border border-red-500/40";
-        case "revoked":
-            return "bg-gray-500/20 text-gray-300 border border-gray-500/40";
         default:
             return "bg-gray-500/20 text-gray-300 border border-gray-500/40";
     }

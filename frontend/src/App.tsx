@@ -10,6 +10,7 @@ import Trainings from "./pages/Trainings";
 import Enrollments from "./pages/Enrollments";
 import Certifications from "./pages/Certifications";
 import ComplianceReport from "./pages/ComplianceReport";
+import CertificateView from "./pages/CertificateView";
 
 export type MenuItemType =
   | "dashboard"
@@ -27,14 +28,8 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   /* ================= MENU STATE ================= */
-  const [activeMenuItem, setActiveMenuItem] = useState<MenuItemType>("dashboard");
-
-  /* ================= INITIAL SETUP ================= */
-  useEffect(() => {
-    // Always reset auth on app start so login appears first
-    localStorage.removeItem("isAuthenticated");
-
-    const savedMenu = localStorage.getItem(STORAGE_KEY) as MenuItemType;
+  const [activeMenuItem, setActiveMenuItem] = useState<MenuItemType>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
     const validItems: MenuItemType[] = [
       "dashboard",
       "departments",
@@ -44,10 +39,16 @@ const App: React.FC = () => {
       "certifications",
       "complianceReport",
     ];
-    if (savedMenu && validItems.includes(savedMenu)) {
-      setActiveMenuItem(savedMenu);
+    if (saved && validItems.includes(saved as MenuItemType)) {
+      return saved as MenuItemType;
     }
-  }, []);
+    return "dashboard";
+  });
+
+  /* ================= CERTIFICATE VIEW STATE ================= */
+  const [viewingCertificateId, setViewingCertificateId] = useState<number | null>(
+    null
+  );
 
   /* ================= SAVE MENU ================= */
   useEffect(() => {
@@ -56,17 +57,27 @@ const App: React.FC = () => {
     }
   }, [activeMenuItem, isAuthenticated]);
 
-  /* ================= SHOW LOGIN IF NOT AUTH ================= */
-  if (!isAuthenticated) {
-    return (
-      <Login
-        onLogin={() => setIsAuthenticated(true)}
-      />
-    );
-  }
+  /* ================= CERTIFICATE HANDLERS ================= */
+  const handleViewCertificate = (certificateId: number) => {
+    setActiveMenuItem("certifications");
+    setViewingCertificateId(certificateId);
+  };
 
-  /* ================= RENDER MAIN APP ================= */
+  const handleBackToCertifications = () => {
+    setViewingCertificateId(null);
+  };
+
+  /* ================= CONTENT RENDER ================= */
   const renderContent = () => {
+    if (viewingCertificateId !== null) {
+      return (
+        <CertificateView
+          certificateId={viewingCertificateId}
+          onBack={handleBackToCertifications}
+        />
+      );
+    }
+
     switch (activeMenuItem) {
       case "dashboard":
         return <Dashboard />;
@@ -79,7 +90,9 @@ const App: React.FC = () => {
       case "enrollments":
         return <Enrollments />;
       case "certifications":
-        return <Certifications />;
+        return (
+          <Certifications onViewCertificate={handleViewCertificate} />
+        );
       case "complianceReport":
         return <ComplianceReport />;
       default:
@@ -87,11 +100,27 @@ const App: React.FC = () => {
     }
   };
 
+  /* ================= LOGIN ================= */
+  if (!isAuthenticated) {
+    return <Login onLogin={() => setIsAuthenticated(true)} />;
+  }
+
+  /* ================= MAIN APP ================= */
   return (
     <div className="flex h-screen bg-dark-bg text-white">
-      <Sidebar activeMenuItem={activeMenuItem} onMenuItemClick={setActiveMenuItem} />
+      <Sidebar
+        activeMenuItem={activeMenuItem}
+        onMenuItemClick={(item) => {
+          setActiveMenuItem(item);
+          setViewingCertificateId(null);
+        }}
+      />
       <div className="flex-1 flex flex-col">
-        <Header activeMenuItem={activeMenuItem} />
+        <Header
+          activeMenuItem={activeMenuItem}
+          showBackButton={viewingCertificateId !== null}
+          onBack={handleBackToCertifications}
+        />
         <main className="flex-1 overflow-auto">{renderContent()}</main>
       </div>
     </div>

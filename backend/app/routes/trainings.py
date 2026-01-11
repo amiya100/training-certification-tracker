@@ -35,12 +35,6 @@ def read_training(training_id: int, db: Session = Depends(get_db)):
         raise HTTPException(404, "Training not found")
     return obj
 
-@router.get("/{training_id}/enrollments", response_model=List[dict])
-def get_training_enrollments(training_id: int, db: Session = Depends(get_db)):
-    from ..crud import enrollment as crud_enrollment
-    enrollments = crud_enrollment.get_by_training(db, training_id)
-    return [{"id": e.id, "employee_id": e.employee_id, "status": e.status} for e in enrollments]
-
 @router.put("/{training_id}", response_model=Training)
 def update_training(training_id: int, training_update: TrainingUpdate, db: Session = Depends(get_db)):
     obj = crud_training.get(db, training_id)

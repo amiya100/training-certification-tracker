@@ -35,20 +35,6 @@ def read_departments(
         limit=limit
     )
 
-@router.get("/{dept_id}", response_model=Department)
-def read_department(dept_id: int, db: Session = Depends(get_db)):
-    dept = crud_department.get_with_employee_count(db, dept_id)
-    if not dept:
-        raise HTTPException(status_code=404, detail="Department not found")
-    return dept
-
-@router.get("/{dept_id}/employees", response_model=List[dict])
-def get_department_employees(dept_id: int, db: Session = Depends(get_db)):
-    dept = crud_department.get_with_employees(db, dept_id)
-    if not dept:
-        raise HTTPException(status_code=404, detail="Department not found")
-    return [{"id": emp.id, "name": f"{emp.first_name} {emp.last_name}", "email": emp.email} for emp in dept.employees]
-
 @router.put("/{dept_id}", response_model=Department)
 def update_department(
     dept_id: int,

@@ -1,4 +1,4 @@
-// api.ts - Updated with compliance methods
+// api.ts - Updated with compliance methods AND certificate methods
 import { type Employee, type EmployeeListResponse } from "../types/employee";
 import {
     type Training,
@@ -48,6 +48,10 @@ class ApiService {
             "/employees"
         );
         return data.employees || [];
+    }
+
+    async getEmployeeById(id: number): Promise<Employee> {
+        return this.fetchWithError<Employee>(`/employees/${id}`);
     }
 
     async createEmployee(employeeData: any): Promise<Employee> {
@@ -111,6 +115,10 @@ class ApiService {
             "/trainings"
         );
         return data.trainings || [];
+    }
+
+    async getTrainingById(id: number): Promise<Training> {
+        return this.fetchWithError<Training>(`/trainings/${id}`);
     }
 
     async createTraining(trainingData: TrainingFormData): Promise<Training> {
@@ -205,6 +213,10 @@ class ApiService {
         return Array.isArray(data) ? data : data.certifications || [];
     }
 
+    async getCertificationById(id: number): Promise<Certification> {
+        return this.fetchWithError<Certification>(`/certifications/${id}`);
+    }
+
     // Compliance Report Methods
     async getComplianceReport(
         filters: ReportFilters
@@ -242,19 +254,29 @@ class ApiService {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `compliance-report-${
+
+        // Get filename from Content-Disposition header or use default
+        const contentDisposition = response.headers.get("content-disposition");
+        let filename = `compliance-report-${
             new Date().toISOString().split("T")[0]
-        }.${format}`;
+        }`;
+
+        if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="(.+?)"/);
+            if (filenameMatch && filenameMatch[1]) {
+                filename = filenameMatch[1];
+            } else {
+                // Use correct extension based on format
+                filename = `${filename}.${format === "excel" ? "xlsx" : "pdf"}`;
+            }
+        } else {
+            // Fallback with correct extension
+            filename = `${filename}.${format === "excel" ? "xlsx" : "pdf"}`;
+        }
+
+        a.download = filename;
         a.click();
         window.URL.revokeObjectURL(url);
-    }
-
-    async emailComplianceReport(filters: ReportFilters): Promise<void> {
-        await this.fetchWithError<void>("/api/compliance/email", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(filters),
-        });
     }
 }
 

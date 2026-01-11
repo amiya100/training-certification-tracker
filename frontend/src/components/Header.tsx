@@ -1,3 +1,4 @@
+// components/Header.tsx
 import React from "react";
 import {
   Settings,
@@ -8,14 +9,22 @@ import {
   ClipboardList,
   Award,
   Building2,
+  ChevronLeft,
+  FileText,
 } from "lucide-react";
 import { type MenuItemType } from "../App";
 
 interface HeaderProps {
   activeMenuItem: MenuItemType;
+  showBackButton?: boolean;
+  onBack?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ activeMenuItem }) => {
+const Header: React.FC<HeaderProps> = ({
+  activeMenuItem,
+  showBackButton = false,
+  onBack,
+}) => {
   const handleLogout = () => {
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("activeMenuItem");
@@ -27,7 +36,8 @@ const Header: React.FC<HeaderProps> = ({ activeMenuItem }) => {
       case "dashboard":
         return {
           title: "HR Management Dashboard",
-          description: "Overview of your training and certification programs",
+          description:
+            "Overview of your training and certification programs",
           icon: <BarChart size={20} className="text-orange-400" />,
           notifications: 3,
         };
@@ -49,7 +59,8 @@ const Header: React.FC<HeaderProps> = ({ activeMenuItem }) => {
       case "enrollments":
         return {
           title: "Training Enrollments",
-          description: "Track and manage employee training enrollments",
+          description:
+            "Track and manage employee training enrollments",
           icon: <ClipboardList size={20} className="text-purple-400" />,
           notifications: 4,
         };
@@ -69,10 +80,18 @@ const Header: React.FC<HeaderProps> = ({ activeMenuItem }) => {
           icon: <Building2 size={20} className="text-indigo-400" />,
           notifications: 1,
         };
+      case "complianceReport":
+        return {
+          title: "Compliance Reports",
+          description: "Generate compliance reports and analytics",
+          icon: <FileText size={20} className="text-red-400" />,
+          notifications: 0,
+        };
       default:
         return {
           title: "HR Management Dashboard",
-          description: "Overview of your training and certification programs",
+          description:
+            "Overview of your training and certification programs",
           icon: <BarChart size={20} className="text-orange-400" />,
           notifications: 3,
         };
@@ -82,13 +101,24 @@ const Header: React.FC<HeaderProps> = ({ activeMenuItem }) => {
   const pageConfig = getPageConfig();
 
   return (
-    <header className="bg-gradient-to-r from-transparent to-white/5 backdrop-blur-sm border-b border-white/20 px-5 py-3">
+    <header className="bg-gradient-to-r from-transparent to-white/5 backdrop-blur-sm border-b border-white/20 px-5 py-3 shadow-2xl">
       <div className="flex items-center justify-between">
         {/* LEFT */}
         <div className="flex items-center space-x-3">
+          {showBackButton && onBack && (
+            <button
+              onClick={onBack}
+              className="p-1.5 bg-gray-800/50 rounded-lg border border-white/10 hover:bg-gray-700/50 transition"
+              title="Go Back"
+            >
+              <ChevronLeft size={18} className="text-gray-200" />
+            </button>
+          )}
+
           <div className="p-2 bg-gray-800/50 rounded-lg border border-white/10">
             {pageConfig.icon}
           </div>
+
           <div>
             <h2 className="text-lg font-semibold text-white">
               {pageConfig.title}
@@ -112,14 +142,13 @@ const Header: React.FC<HeaderProps> = ({ activeMenuItem }) => {
             <Settings size={16} className="text-gray-200" />
           </button>
 
-          {/* USER / LOGOUT */}
           <div
             onClick={handleLogout}
             className="flex items-center space-x-2 cursor-pointer"
             title="Logout"
           >
             <img
-              src="https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop"
+              src="https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg"
               alt="User"
               className="w-8 h-8 rounded-full border-2 border-white/20"
             />

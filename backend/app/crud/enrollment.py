@@ -38,20 +38,6 @@ class CRUDEnrollment:
             db.commit()
         return obj
 
-    def get_by_employee(self, db: Session, employee_id: int) -> List[Enrollment]:
-        return db.query(Enrollment).filter(Enrollment.employee_id == employee_id).all()
-
-    def get_by_training(self, db: Session, training_id: int) -> List[Enrollment]:
-        return db.query(Enrollment).filter(Enrollment.training_id == training_id).all()
-
-    def get_by_status(self, db: Session, status: str) -> List[Enrollment]:
-        return db.query(Enrollment).filter(Enrollment.status == status).all()
-
-    def get_active_enrollments(self, db: Session) -> List[Enrollment]:
-        return db.query(Enrollment).filter(
-            Enrollment.status.in_(["enrolled", "in_progress"])
-        ).all()
-
     # NEW METHOD: Update progress for an enrollment
     def update_progress(self, db: Session, *, enrollment_id: int, progress: int) -> Optional[Enrollment]:
         """Update progress percentage for an enrollment (0-100)"""
@@ -79,13 +65,5 @@ class CRUDEnrollment:
     def complete_enrollment(self, db: Session, enrollment_id: int) -> Optional[Enrollment]:
         """Mark enrollment as completed (progress=100)"""
         return self.update_progress(db, enrollment_id=enrollment_id, progress=100)
-
-    # NEW METHOD: Get enrollments with progress data
-    def get_with_progress(self, db: Session, min_progress: int = 0, max_progress: int = 100) -> List[Enrollment]:
-        """Get enrollments filtered by progress range"""
-        return db.query(Enrollment).filter(
-            Enrollment.progress >= min_progress,
-            Enrollment.progress <= max_progress
-        ).all()
 
 enrollment = CRUDEnrollment()

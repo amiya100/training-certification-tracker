@@ -1,4 +1,4 @@
-// ComplianceReport.tsx - Complete version with all sections
+// ComplianceReport.tsx
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { apiService } from "../services/api";
 import { useToast } from "../hooks/useToast";
@@ -7,10 +7,13 @@ import {
     type ReportFilters,
     type ComplianceMetrics,
 } from "../types/compliance";
+import { type Department } from "../types/department";
 
 const ComplianceReport: React.FC = () => {
     const [metrics, setMetrics] = useState<ComplianceMetrics | null>(null);
+    const [departments, setDepartments] = useState<Department[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
+    const [loadingDepartments, setLoadingDepartments] = useState<boolean>(true);
     const [exporting, setExporting] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -22,23 +25,31 @@ const ComplianceReport: React.FC = () => {
                 .split("T")[0],
             end: new Date().toISOString().split("T")[0],
         },
-        compliance_threshold: 80,
-        include_expired: true,
-        include_expiring_soon: true,
-        certification_type: "all",
     });
 
     const { toasts, addToast, removeToast } = useToast();
+
+    // Fetch departments list
+    const fetchDepartments = useCallback(async () => {
+        try {
+            setLoadingDepartments(true);
+            const data = await apiService.getDepartments();
+            setDepartments(data);
+        } catch (err) {
+            console.error("Error fetching departments:", err);
+            addToast("Failed to load departments list", "error");
+        } finally {
+            setLoadingDepartments(false);
+        }
+    }, [addToast]);
 
     // Fetch compliance data
     const fetchComplianceData = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
-            console.log("Fetching compliance data with filters:", filters);
 
             const data = await apiService.getComplianceReport(filters);
-            console.log("Compliance data received:", data);
 
             // Ensure arrays exist even if empty
             const processedData = {
@@ -61,11 +72,7 @@ const ComplianceReport: React.FC = () => {
         }
     }, [filters, addToast]);
 
-    // Rest of your handlers remain the same...
-    const handleGenerateReport = useCallback(() => {
-        fetchComplianceData();
-    }, [fetchComplianceData]);
-
+    // Handlers
     const handleExportPDF = useCallback(async () => {
         try {
             setExporting(true);
@@ -92,16 +99,12 @@ const ComplianceReport: React.FC = () => {
         }
     }, [filters, addToast]);
 
-    const handleEmailReport = useCallback(async () => {
-        try {
-            await apiService.emailComplianceReport(filters);
-            addToast("Report sent via email successfully", "success");
-        } catch (err) {
-            console.error("Error emailing report:", err);
-            addToast("Failed to send email report", "error");
-        }
-    }, [filters, addToast]);
+    // Fetch departments on initial load
+    useEffect(() => {
+        fetchDepartments();
+    }, [fetchDepartments]);
 
+    // Fetch data on initial load and when filters change
     useEffect(() => {
         fetchComplianceData();
     }, [fetchComplianceData]);
@@ -127,6 +130,14 @@ const ComplianceReport: React.FC = () => {
                     : 0,
         };
     }, [metrics]);
+
+    // Loading skeleton for departments
+    const DepartmentSelectSkeleton = () => (
+        <div className="animate-pulse">
+            <div className="h-4 bg-gray-700/50 rounded w-1/4 mb-2"></div>
+            <div className="h-10 bg-gray-700/50 rounded-lg"></div>
+        </div>
+    );
 
     // Loading skeleton
     if (loading && !metrics) {
@@ -187,163 +198,42 @@ const ComplianceReport: React.FC = () => {
                                 compliance
                             </p>
                         </div>
-                        <div className="flex flex-col sm:flex-row gap-3">
-                            <button
-                                onClick={handleGenerateReport}
-                                className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 backdrop-blur-sm border border-blue-500/30 rounded-xl text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
-                            >
-                                <svg
-                                    className="w-5 h-5"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                                    />
-                                </svg>
-                                Refresh Report
-                            </button>
-                        </div>
                     </div>
 
-                    {/* Filters Section */}
-                    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div>
+                    {/* Filters Section - Only Department Filter */}
+                    <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
+                        <div className="flex-1 max-w-md">
                             <label className="block text-sm font-medium text-gray-300 mb-2">
                                 Department
                             </label>
-                            <select
-                                className="w-full px-3 py-2 bg-white/5 backdrop-blur-sm border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                value={filters.department}
-                                onChange={(e) =>
-                                    setFilters((prev) => ({
-                                        ...prev,
-                                        department: e.target.value,
-                                    }))
-                                }
-                            >
-                                <option value="all">All Departments</option>
-                                <option value="hr">HR</option>
-                                <option value="it">IT</option>
-                                <option value="sales">Sales</option>
-                                <option value="operations">Operations</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                                Date Range
-                            </label>
-                            <div className="flex gap-2">
-                                <input
-                                    type="date"
-                                    className="flex-1 px-3 py-2 bg-white/5 backdrop-blur-sm border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    value={filters.date_range.start}
+                            {loadingDepartments ? (
+                                <DepartmentSelectSkeleton />
+                            ) : (
+                                <select
+                                    className="w-full px-3 py-2 bg-white/5 backdrop-blur-sm border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    value={filters.department}
                                     onChange={(e) =>
                                         setFilters((prev) => ({
                                             ...prev,
-                                            date_range: {
-                                                ...prev.date_range,
-                                                start: e.target.value,
-                                            },
+                                            department: e.target.value,
                                         }))
                                     }
-                                />
-                                <input
-                                    type="date"
-                                    className="flex-1 px-3 py-2 bg-white/5 backdrop-blur-sm border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    value={filters.date_range.end}
-                                    onChange={(e) =>
-                                        setFilters((prev) => ({
-                                            ...prev,
-                                            date_range: {
-                                                ...prev.date_range,
-                                                end: e.target.value,
-                                            },
-                                        }))
-                                    }
-                                />
-                            </div>
+                                >
+                                    <option value="all">All Departments</option>
+                                    {departments.map((dept) => (
+                                        <option
+                                            key={dept.id}
+                                            value={dept.name}
+                                            className="text-black"
+                                        >
+                                            {dept.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                                Compliance Threshold:{" "}
-                                {filters.compliance_threshold}%
-                            </label>
-                            <input
-                                type="range"
-                                min="50"
-                                max="100"
-                                step="5"
-                                className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer"
-                                value={filters.compliance_threshold}
-                                onChange={(e) =>
-                                    setFilters((prev) => ({
-                                        ...prev,
-                                        compliance_threshold: parseInt(
-                                            e.target.value
-                                        ),
-                                    }))
-                                }
-                            />
-                        </div>
-                        <div className="flex items-end space-x-4">
-                            <label className="inline-flex items-center">
-                                <input
-                                    type="checkbox"
-                                    className="rounded bg-white/5 border-white/20 text-blue-500 focus:ring-blue-500"
-                                    checked={filters.include_expired}
-                                    onChange={(e) =>
-                                        setFilters((prev) => ({
-                                            ...prev,
-                                            include_expired: e.target.checked,
-                                        }))
-                                    }
-                                />
-                                <span className="ml-2 text-gray-300">
-                                    Include Expired
-                                </span>
-                            </label>
-                            <label className="inline-flex items-center">
-                                <input
-                                    type="checkbox"
-                                    className="rounded bg-white/5 border-white/20 text-blue-500 focus:ring-blue-500"
-                                    checked={filters.include_expiring_soon}
-                                    onChange={(e) =>
-                                        setFilters((prev) => ({
-                                            ...prev,
-                                            include_expiring_soon:
-                                                e.target.checked,
-                                        }))
-                                    }
-                                />
-                                <span className="ml-2 text-gray-300">
-                                    Expiring Soon
-                                </span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
 
-                {/* Export Controls */}
-                <div className="bg-gradient-to-r from-transparent to-white/5 backdrop-blur-sm border border-white/20 rounded-3xl p-5 shadow-2xl">
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="text-gray-300">
-                            <span className="font-semibold text-white">
-                                Report Period:
-                            </span>{" "}
-                            {new Date(
-                                filters.date_range.start
-                            ).toLocaleDateString()}{" "}
-                            -{" "}
-                            {new Date(
-                                filters.date_range.end
-                            ).toLocaleDateString()}
-                        </div>
-                        <div className="flex flex-wrap gap-3">
+                        <div className="flex flex-wrap gap-3 mt-2 sm:mt-0">
                             <button
                                 onClick={handleExportPDF}
                                 disabled={exporting}
@@ -411,30 +301,11 @@ const ComplianceReport: React.FC = () => {
                                 </svg>
                                 Export Excel
                             </button>
-                            <button
-                                onClick={handleEmailReport}
-                                className="px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 backdrop-blur-sm border border-purple-500/30 rounded-lg text-white hover:from-purple-600 hover:to-purple-700 transition-all duration-300 flex items-center gap-2"
-                            >
-                                <svg
-                                    className="w-5 h-5"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                                    />
-                                </svg>
-                                Email Report
-                            </button>
                         </div>
                     </div>
                 </div>
 
-                {/* Key Metrics */}
+                {/* Key Metrics - Render metrics if available */}
                 {metrics && derivedMetrics && (
                     <>
                         {/* Overall Compliance */}
@@ -609,7 +480,7 @@ const ComplianceReport: React.FC = () => {
                                                         </span>
                                                         <span>
                                                             {dept.complianceRate >=
-                                                            filters.compliance_threshold
+                                                            80
                                                                 ? "✓ Compliant"
                                                                 : "✗ Non-Compliant"}
                                                         </span>
@@ -786,8 +657,7 @@ const ComplianceReport: React.FC = () => {
                                                                     >
                                                                         {
                                                                             item.daysUntilExpiry
-                                                                        }{" "}
-                                                                        days
+                                                                        }
                                                                     </span>
                                                                 </td>
                                                                 <td className="px-4 py-3 text-gray-300">
@@ -969,7 +839,9 @@ const ComplianceReport: React.FC = () => {
                                         Total Training Programs
                                     </div>
                                     <div className="text-sm text-blue-400 mt-1">
-                                        Active across all departments
+                                        {filters.department !== "all"
+                                            ? `For ${filters.department} department`
+                                            : "Active across all departments"}
                                     </div>
                                 </div>
                             </div>
