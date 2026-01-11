@@ -39,7 +39,5 @@ class CRUDTraining:
             db.commit()
         return obj
 
-    def search_by_name(self, db: Session, name: str) -> List[Training]:
-        return db.query(Training).filter(Training.name.ilike(f"%{name}%")).all()
 
 training = CRUDTraining()

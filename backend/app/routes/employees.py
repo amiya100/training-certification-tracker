@@ -58,18 +58,6 @@ def read_employee(employee_id: int, db: Session = Depends(get_db)):
         )
     return db_employee
 
-@router.get("/{employee_id}/enrollments", response_model=List[dict])
-def get_employee_enrollments(employee_id: int, db: Session = Depends(get_db)):
-    from ..crud import enrollment as crud_enrollment
-    enrollments = crud_enrollment.get_by_employee(db, employee_id)
-    return [{"id": e.id, "training_id": e.training_id, "status": e.status} for e in enrollments]
-
-@router.get("/{employee_id}/certifications", response_model=List[dict])
-def get_employee_certifications(employee_id: int, db: Session = Depends(get_db)):
-    from ..crud import certification as crud_certification
-    certifications = crud_certification.get_by_employee(db, employee_id)
-    return [{"id": c.id, "cert_number": c.cert_number, "status": c.status, "expires_at": c.expires_at} for c in certifications]
-
 @router.put("/{employee_id}", response_model=Employee)
 def update_employee(
     employee_id: int,

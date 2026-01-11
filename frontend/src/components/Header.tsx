@@ -1,4 +1,4 @@
-// components/Header.tsx (with page icons)
+// components/Header.tsx (with page icons and back button)
 import React from "react";
 import {
     Settings,
@@ -9,14 +9,22 @@ import {
     ClipboardList,
     Award,
     Building2,
+    ChevronLeft,
+    FileText,
 } from "lucide-react";
 import { type MenuItemType } from "../App";
 
 interface HeaderProps {
     activeMenuItem: MenuItemType;
+    showBackButton?: boolean;
+    onBack?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ activeMenuItem }) => {
+const Header: React.FC<HeaderProps> = ({
+    activeMenuItem,
+    showBackButton = false,
+    onBack,
+}) => {
     const getPageConfig = () => {
         switch (activeMenuItem) {
             case "dashboard":
@@ -68,6 +76,13 @@ const Header: React.FC<HeaderProps> = ({ activeMenuItem }) => {
                     icon: <Building2 size={20} className="text-indigo-400" />,
                     notifications: 1,
                 };
+            case "complianceReport": // Added this case
+                return {
+                    title: "Compliance Reports",
+                    description: "Generate compliance reports and analytics",
+                    icon: <FileText size={20} className="text-red-400" />,
+                    notifications: 0,
+                };
             default:
                 return {
                     title: "HR Management Dashboard",
@@ -85,14 +100,35 @@ const Header: React.FC<HeaderProps> = ({ activeMenuItem }) => {
         <header className="bg-gradient-to-r from-transparent to-white/5 backdrop-blur-sm border-b border-white/20 px-5 py-3 shadow-2xl">
             <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
+                    {/* Back Button - Only show when viewing certificate */}
+                    {showBackButton && onBack && (
+                        <button
+                            onClick={onBack}
+                            className="p-1.5 bg-gray-800/50 rounded-lg border border-white/10 hover:bg-gray-700/50 hover:border-white/20 transition-all duration-300 group"
+                            title="Go Back"
+                        >
+                            <ChevronLeft
+                                size={18}
+                                className="text-gray-200 group-hover:text-amber-400"
+                            />
+                        </button>
+                    )}
+
                     <div className="p-2 bg-gray-800/50 rounded-lg border border-white/10">
                         {pageConfig.icon}
                     </div>
+
                     <div>
                         <div className="flex items-center space-x-2">
                             <h2 className="text-lg font-semibold text-white drop-shadow-lg">
                                 {pageConfig.title}
                             </h2>
+                            {/* If viewing certificate, show "Certificate Details" subtitle */}
+                            {showBackButton && (
+                                <span className="text-sm text-gray-300">
+                                    • Certificate Details
+                                </span>
+                            )}
                         </div>
                         <p className="text-xs text-gray-300 mt-1">
                             {pageConfig.description}

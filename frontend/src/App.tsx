@@ -9,6 +9,7 @@ import Trainings from "./pages/Trainings";
 import Enrollments from "./pages/Enrollments";
 import Certifications from "./pages/Certifications";
 import ComplianceReport from "./pages/ComplianceReport";
+import CertificateView from "./pages/CertificateView"; // Add this import
 
 export type MenuItemType =
     | "dashboard"
@@ -21,12 +22,10 @@ export type MenuItemType =
 
 const STORAGE_KEY = "activeMenuItem";
 
+// Add certificateId state to track if we're viewing a certificate
 const App: React.FC = () => {
-    // Initialize state with saved value or default
     const [activeMenuItem, setActiveMenuItem] = useState<MenuItemType>(() => {
-        // Try to get saved value from localStorage
         const saved = localStorage.getItem(STORAGE_KEY);
-        // Validate that the saved value is a valid MenuItemType
         const validItems: MenuItemType[] = [
             "dashboard",
             "departments",
@@ -39,16 +38,41 @@ const App: React.FC = () => {
         if (saved && validItems.includes(saved as MenuItemType)) {
             return saved as MenuItemType;
         }
-        // Return default if no valid saved value
         return "dashboard";
     });
 
-    // Save to localStorage whenever activeMenuItem changes
+    // Add state for viewing a specific certificate
+    const [viewingCertificateId, setViewingCertificateId] = useState<
+        number | null
+    >(null);
+
     useEffect(() => {
         localStorage.setItem(STORAGE_KEY, activeMenuItem);
     }, [activeMenuItem]);
 
+    // Function to view a certificate (called from Certifications page)
+    const handleViewCertificate = (certificateId: number) => {
+        setActiveMenuItem("certifications");
+        setViewingCertificateId(certificateId);
+    };
+
+    // Function to go back to certifications list
+    const handleBackToCertifications = () => {
+        setViewingCertificateId(null);
+    };
+
     const renderContent = () => {
+        // If we're viewing a specific certificate, show CertificateView
+        if (viewingCertificateId !== null) {
+            return (
+                <CertificateView
+                    certificateId={viewingCertificateId}
+                    onBack={handleBackToCertifications}
+                />
+            );
+        }
+
+        // Otherwise, show the normal menu content
         switch (activeMenuItem) {
             case "dashboard":
                 return <Dashboard />;
@@ -61,7 +85,9 @@ const App: React.FC = () => {
             case "enrollments":
                 return <Enrollments />;
             case "certifications":
-                return <Certifications />;
+                return (
+                    <Certifications onViewCertificate={handleViewCertificate} />
+                );
             case "complianceReport":
                 return <ComplianceReport />;
             default:
@@ -73,10 +99,17 @@ const App: React.FC = () => {
         <div className="flex h-screen bg-dark-bg text-white">
             <Sidebar
                 activeMenuItem={activeMenuItem}
-                onMenuItemClick={setActiveMenuItem}
+                onMenuItemClick={(item) => {
+                    setActiveMenuItem(item);
+                    setViewingCertificateId(null); // Clear certificate view when changing menu
+                }}
             />
             <div className="flex-1 flex flex-col">
-                <Header activeMenuItem={activeMenuItem} />
+                <Header
+                    activeMenuItem={activeMenuItem}
+                    showBackButton={viewingCertificateId !== null}
+                    onBack={handleBackToCertifications}
+                />
                 <main className="flex-1 overflow-auto">{renderContent()}</main>
             </div>
         </div>

@@ -1,4 +1,16 @@
 // types/compliance.ts
+
+// Add DepartmentCompliance interface
+export interface DepartmentCompliance {
+    department: string;
+    complianceRate: number;
+    totalEmployees: number;
+    compliantEmployees: number;
+    completedTrainings: number;
+    pendingTrainings: number;
+    totalTrainings: number;
+}
+
 export interface ComplianceMetrics {
     totalEmployees: number;
     compliantEmployees: number;
@@ -9,12 +21,7 @@ export interface ComplianceMetrics {
     completedTrainings: number;
     pendingTrainings: number;
     overallComplianceRate: number;
-    departmentCompliance: Array<{
-        department: string;
-        complianceRate: number;
-        totalEmployees: number;
-        compliantEmployees: number;
-    }>;
+    departmentCompliance: DepartmentCompliance[]; // Use the interface here
     certificationStatus: Array<{
         certification: string;
         total: number;
@@ -43,12 +50,7 @@ export interface ComplianceMetrics {
 export interface ReportFilters {
     department: string;
     date_range: {
-        // snake_case
         start: string;
         end: string;
     };
-    compliance_threshold: number; // snake_case
-    include_expired: boolean; // snake_case
-    include_expiring_soon: boolean; // snake_case
-    certification_type: string; // snake_case
 }

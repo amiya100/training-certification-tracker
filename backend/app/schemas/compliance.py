@@ -1,21 +1,38 @@
 # app/schemas/compliance.py
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import date, datetime
 from typing import List, Optional
 
+# Helper function to convert snake_case to camelCase
+def to_camel(string: str) -> str:
+    """Convert snake_case string to camelCase"""
+    words = string.split('_')
+    return words[0] + ''.join(word.capitalize() for word in words[1:])
+
 class ReportFilters(BaseModel):
-    department: Optional[str] = "all"
-    date_range: dict
-    compliance_threshold: Optional[int] = 80
-    include_expired: Optional[bool] = True
-    include_expiring_soon: Optional[bool] = True
-    certification_type: Optional[str] = "all"
+    department: str = "all"
+    date_range: Optional[dict] = {
+        "start": "2024-01-01",
+        "end": "2024-12-31"
+    }
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True
+    )
 
 class DepartmentCompliance(BaseModel):
     department: str
     compliance_rate: float
     total_employees: int
     compliant_employees: int
+    completed_trainings: Optional[int] = 0
+    pending_trainings: Optional[int] = 0
+    total_trainings: Optional[int] = 0
+    
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True
+    )
 
 class CertificationStatus(BaseModel):
     certification: str
@@ -24,6 +41,11 @@ class CertificationStatus(BaseModel):
     expiring_soon: int
     expired: int
     compliance_rate: float
+    
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True
+    )
 
 class UpcomingExpiration(BaseModel):
     id: int
@@ -32,6 +54,11 @@ class UpcomingExpiration(BaseModel):
     expiry_date: date
     days_until_expiry: int
     department: str
+    
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True
+    )
 
 class MissingCertification(BaseModel):
     id: int
@@ -39,6 +66,11 @@ class MissingCertification(BaseModel):
     required_certification: str
     department: str
     days_overdue: int
+    
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True
+    )
 
 class ComplianceMetrics(BaseModel):
     total_employees: int
@@ -54,3 +86,8 @@ class ComplianceMetrics(BaseModel):
     certification_status: List[CertificationStatus]
     upcoming_expirations: List[UpcomingExpiration]
     missing_certifications: List[MissingCertification]
+    
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True
+    )

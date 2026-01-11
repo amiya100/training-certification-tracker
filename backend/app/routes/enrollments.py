@@ -51,17 +51,6 @@ def read_enrollments(
     total = crud_enrollment.get_total_count(db)
     return EnrollmentList(enrollments=items, total=total, skip=skip, limit=limit)
 
-@router.get("/active", response_model=List[Enrollment])
-def get_active_enrollments(db: Session = Depends(get_db)):
-    return crud_enrollment.get_active_enrollments(db)
-
-@router.get("/{enrollment_id}", response_model=Enrollment)
-def read_enrollment(enrollment_id: int, db: Session = Depends(get_db)):
-    obj = crud_enrollment.get(db, enrollment_id)
-    if not obj:
-        raise HTTPException(404, "Enrollment not found")
-    return obj
-
 @router.put("/{enrollment_id}", response_model=Enrollment)
 def update_enrollment(
     enrollment_id: int,
@@ -71,6 +60,7 @@ def update_enrollment(
     obj = crud_enrollment.get(db, enrollment_id)
     if not obj:
         raise HTTPException(404, "Enrollment not found")
+    print(enrollment_update)
     
     # If marking as completed, set completed_date
     if enrollment_update.status == "completed" and obj.status != "completed":
@@ -81,7 +71,8 @@ def update_enrollment(
             create_certificate_if_not_exists(db, enrollment=obj)
     
     # If progress is 100, auto-mark as completed
-    if enrollment_update.progress == 100 and enrollment_update.status is None:
+    if enrollment_update.progress == 100 and obj.status in ["in_progress","enrolled"]:
+        from datetime import datetime
         enrollment_update.status = "completed"
         enrollment_update.completed_date = datetime.utcnow()
         create_certificate_if_not_exists(db, enrollment=obj)
@@ -100,7 +91,7 @@ def update_enrollment_progress(
     if not obj:
         raise HTTPException(404, "Enrollment not found")
     
-    # Create certificate if progress is 100%
+    # Create certificate if progress is 100
     if progress == 100:
         create_certificate_if_not_exists(db, enrollment=obj)
     
