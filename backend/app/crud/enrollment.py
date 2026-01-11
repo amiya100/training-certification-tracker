@@ -11,6 +11,14 @@ class CRUDEnrollment:
     def get_multi(self, db: Session, skip: int = 0, limit: int = 100) -> List[Enrollment]:
         return db.query(Enrollment).offset(skip).limit(limit).all()
 
+    def get_by_employee(self, db: Session, employee_id: int):
+        return (
+            db.query(Enrollment)
+            .filter(Enrollment.employee_id == employee_id)
+            .all()
+        )
+
+
     def get_total_count(self, db: Session) -> int:
         return db.query(Enrollment).count()
 
