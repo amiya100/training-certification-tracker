@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
+from app.routes import auth  # import the auth router
 
 from app.routes import (
     employee_router,
@@ -9,7 +10,8 @@ from app.routes import (
     enrollment_router,
     certification_router,
     dashboard_router,
-    compliance_router
+    compliance_router,
+    auth
 )
 
 app = FastAPI(title="Training & Certification Tracker")
@@ -34,6 +36,8 @@ app.include_router(enrollment_router)
 app.include_router(certification_router)
 app.include_router(dashboard_router)
 app.include_router(compliance_router)
+app.include_router(auth.router)
+
 
 @app.get("/")
 def root():

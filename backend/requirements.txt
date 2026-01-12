@@ -18,3 +18,7 @@ pytz==2025.2
 pandas==2.3.3
 reportlab==4.4.7
 openpyxl==3.1.5
+# JWT Authentication
+python-jose==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.9
