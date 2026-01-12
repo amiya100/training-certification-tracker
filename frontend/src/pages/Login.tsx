@@ -10,20 +10,33 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const USER_EMAIL = "skillflow@gmail.com";
-  const USER_PASSWORD = "skillflow1";
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
 
-    if (
-      email.trim().toLowerCase() === USER_EMAIL.toLowerCase() &&
-      password === USER_PASSWORD
-    ) {
-      onLogin();
-    } else {
-      setError("Invalid email or password");
+    try {
+      const res = await fetch("http://127.0.0.1:8000/auth/login", { // ✅ FastAPI endpoint
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.detail || "Login failed"); // ✅ FastAPI returns "detail" on error
+      } else {
+        localStorage.setItem("token", data.access_token); // ✅ store JWT
+        onLogin();
+      }
+    } catch (err) {
+      setError("Server error. Try again later.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -37,7 +50,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     >
       <form
         onSubmit={handleSubmit}
-        className="w-[380px] p-8 rounded-2xl bg-black/40 backdrop-blur-md border border-white/20 shadow-2xl"
+        className="w-[380px] p-8 rounded-2xl bg-black/40 backdrop-blur-md border border-white/20 shadow-2xl relative"
       >
         <div className="flex flex-col items-center mb-6">
           <img src={logo} className="w-12 h-12" />
@@ -57,20 +70,30 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           required
         />
 
-        <input
-          type="password"
-          placeholder="Password"
-          className="w-full mb-6 px-4 py-2 rounded-lg bg-gray-900 border border-white/10"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+        <div className="relative mb-6">
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="Password"
+            className="w-full px-4 py-2 rounded-lg bg-gray-900 border border-white/10"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+          >
+            {showPassword ? "🙈" : "👁️"}
+          </button>
+        </div>
 
         <button
           type="submit"
           className="w-full py-2 rounded-lg bg-gradient-to-r from-orange-500 to-red-500 font-medium"
+          disabled={loading}
         >
-          Login
+          {loading ? "Logging in..." : "Login"}
         </button>
       </form>
     </div>
