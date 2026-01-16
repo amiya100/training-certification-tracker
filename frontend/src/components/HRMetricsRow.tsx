@@ -1,12 +1,13 @@
 // HRMetricsRow.tsx
 import React from "react";
 import { type HRItem, type HRMetricsData } from "../types/hr";
+import type { MenuItemType } from "../App";
 
 interface HRMetricsRowProps {
     data?: HRMetricsData;
     loading?: boolean;
     error?: string | null;
-    onViewAll?: (type: string) => void;
+    onViewAll?: (type: MenuItemType) => void;
     onRetry?: () => void;
 }
 
@@ -21,7 +22,7 @@ const HRMetricsRow: React.FC<HRMetricsRowProps> = ({
     onViewAll,
     onRetry,
 }) => {
-    const handleViewAll = (type: string) => {
+    const handleViewAll = (type: MenuItemType) => {
         if (onViewAll) {
             onViewAll(type);
         } else {
@@ -33,7 +34,7 @@ const HRMetricsRow: React.FC<HRMetricsRowProps> = ({
     const renderCard = (
         title: string,
         items: HRItem[],
-        type: string,
+        type: MenuItemType,
         emptyMessage: string = "No data available"
     ) => {
         if (loading) {

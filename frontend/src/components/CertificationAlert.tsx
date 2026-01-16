@@ -28,7 +28,6 @@ const CertificationAlertCard: React.FC<CertificationAlertCardProps> = ({
     loading = false,
     error = null,
     onViewAll,
-    onRenewCert,
     periodLabel,
 }) => {
     // Use pre-categorized alerts from backend
@@ -211,19 +210,6 @@ const CertificationAlertCard: React.FC<CertificationAlertCardProps> = ({
                                                 Expires:{" "}
                                                 {formatDate(alert.expiryDate)}
                                             </div>
-                                            {onRenewCert &&
-                                                alert.status === "expired" && (
-                                                    <button
-                                                        onClick={() =>
-                                                            onRenewCert(
-                                                                alert.id
-                                                            )
-                                                        }
-                                                        className="px-3 py-1 text-xs bg-blue-600 backdrop-blur-sm border border-blue-500/30 rounded-lg text-white hover:bg-blue-700 transition-all duration-300 opacity-0 group-hover:opacity-100"
-                                                    >
-                                                        Renew
-                                                    </button>
-                                                )}
                                         </div>
                                     </div>
                                 </div>
@@ -245,7 +231,7 @@ const CertificationAlertCard: React.FC<CertificationAlertCardProps> = ({
                             onClick={onViewAll}
                             className="px-4 py-2 bg-gray-700 backdrop-blur-sm text-white text-sm font-medium rounded-xl border border-white/20 shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 hover:bg-gray-600"
                         >
-                            View All Alerts
+                            View All Certifications
                         </button>
                     )}
                 </div>

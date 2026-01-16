@@ -1,4 +1,4 @@
-from sqlalchemy import func, case
+from sqlalchemy import func, case, and_, or_
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -115,85 +115,88 @@ async def get_dashboard_data(db: Session = Depends(get_db)):
             "training_growth_percentage": training_growth_percentage
         }
         
-        # ===== 2. EMPLOYEE STATUS =====
-        # Get employees in training (enrolled or in_progress)
+        # ===== 2. EMPLOYEE STATUS (FIXED) =====
+        # Create subqueries for employee statuses
         in_training_subq = db.query(Enrollment.employee_id).filter(
             Enrollment.status.in_(["enrolled", "in_progress"])
         ).distinct().subquery()
         
-        # Get certified employees
         certified_subq = db.query(Certification.employee_id).filter(
             Certification.status == "active"
         ).distinct().subquery()
         
-        # Get employees with completed enrollments
+        # FIXED LOGIC: Employees should be in only one category with priority:
+        # 1. In Training (highest priority - if currently training, show as in training)
+        # 2. Certified (if not training but has active certifications)
+        # 3. Available (if not training and no certifications)
+        
+        # Count employees in each category (mutually exclusive)
+        in_training_count = db.query(func.count()).filter(
+            Employee.id.in_(db.query(in_training_subq.c.employee_id))
+        ).scalar() or 0
+        
+        certified_count = db.query(func.count()).filter(
+            ~Employee.id.in_(db.query(in_training_subq.c.employee_id)),  # Not in training
+            Employee.id.in_(db.query(certified_subq.c.employee_id))      # But certified
+        ).scalar() or 0
+        
+        available_count = db.query(func.count()).filter(
+            ~Employee.id.in_(db.query(in_training_subq.c.employee_id)),  # Not in training
+            ~Employee.id.in_(db.query(certified_subq.c.employee_id))     # Not certified
+        ).scalar() or 0
+        
+        # FIXED: Calculate completed differently - employees who have completed enrollments
+        # but don't have active certifications for those trainings
         completed_subq = db.query(Enrollment.employee_id).filter(
             Enrollment.status == "completed"
         ).distinct().subquery()
         
-        # FIXED: Use correct case() syntax for SQLAlchemy 1.4+
-        status_counts_query = db.query(
-            func.count(
-                case(
-                    (Employee.id.in_(db.query(in_training_subq.c.employee_id)), 1),
-                    else_=None
-                )
-            ).label('in_training'),
-            func.count(
-                case(
-                    (Employee.id.in_(db.query(certified_subq.c.employee_id)), 1),
-                    else_=None
-                )
-            ).label('certified'),
-            func.count(
-                case(
-                    (
-                        ~Employee.id.in_(db.query(in_training_subq.c.employee_id)) &
-                        ~Employee.id.in_(db.query(certified_subq.c.employee_id)),
-                        1
-                    ),
-                    else_=None
-                )
-            ).label('available'),
-            func.count(
-                case(
-                    (Employee.id.in_(db.query(completed_subq.c.employee_id)), 1),
-                    else_=None
-                )
-            ).label('completed')
+        # Get employees who have completed training but no active certification for that training
+        completed_count_query = db.query(func.count(func.distinct(Employee.id))).filter(
+            Employee.id.in_(db.query(completed_subq.c.employee_id)),
+            ~Employee.id.in_(db.query(in_training_subq.c.employee_id)),  # Not currently in training
+            ~Employee.id.in_(db.query(certified_subq.c.employee_id))     # No active certifications
         )
-    
-        status_counts = status_counts_query.first()
-        if status_counts:
-            in_training_count, certified_count, available_count, completed_count = status_counts
-        else:
-            in_training_count = certified_count = available_count = completed_count = 0
-    
+        
+        completed_count = completed_count_query.scalar() or 0
+        
+        # Adjust available count to exclude completed employees
+        available_count = max(0, available_count - completed_count)
+        
+        # Verify counts (for debugging)
+        calculated_total = in_training_count + certified_count + available_count + completed_count
+        
+        # If there's a discrepancy due to data issues, adjust available count
+        if total_employees > 0 and abs(calculated_total - total_employees) > 1:
+            print(f"Debug: Employee count mismatch. Total: {total_employees}, Calculated: {calculated_total}")
+            # Adjust available count to match total
+            available_count = max(0, total_employees - (in_training_count + certified_count + completed_count))
+        
         employee_status = {
             "totalEmployees": total_employees,
             "distribution": [
                 {
                     "label": "In Training",
-                    "count": in_training_count or 0,
-                    "percent": round((in_training_count or 0) / total_employees * 100, 1) if total_employees > 0 else 0,
+                    "count": in_training_count,
+                    "percent": round((in_training_count / total_employees) * 100, 1) if total_employees > 0 else 0,
                     "color": "#3B82F6"
                 },
                 {
                     "label": "Certified",
-                    "count": certified_count or 0,
-                    "percent": round((certified_count or 0) / total_employees * 100, 1) if total_employees > 0 else 0,
+                    "count": certified_count,
+                    "percent": round((certified_count / total_employees) * 100, 1) if total_employees > 0 else 0,
                     "color": "#10B981"
                 },
                 {
                     "label": "Available",
-                    "count": available_count or 0,
-                    "percent": round((available_count or 0) / total_employees * 100, 1) if total_employees > 0 else 0,
+                    "count": available_count,
+                    "percent": round((available_count / total_employees) * 100, 1) if total_employees > 0 else 0,
                     "color": "#6B7280"
                 },
                 {
                     "label": "Completed",
-                    "count": completed_count or 0,
-                    "percent": round((completed_count or 0) / total_employees * 100, 1) if total_employees > 0 else 0,
+                    "count": completed_count,
+                    "percent": round((completed_count / total_employees) * 100, 1) if total_employees > 0 else 0,
                     "color": "#8B5CF6"
                 }
             ],
@@ -202,7 +205,6 @@ async def get_dashboard_data(db: Session = Depends(get_db)):
         
         # ===== 3. CERTIFICATION ALERTS (replacing Training Certifications) =====
         certification_alerts = get_certification_alerts_data(db, now_ist)
-        
         
         # ===== 4. TRAINING PROGRESS =====
         training_progress = get_training_progress_data(db)
@@ -225,7 +227,7 @@ async def get_dashboard_data(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Failed to process dashboard data: {str(e)}")
     
 
-#Helper functions
+# Helper functions
 def calculate_growth(today_total: int, yesterday_total: int) -> float:
     """Calculate percentage growth from yesterday to today"""
     if yesterday_total > 0:
@@ -238,10 +240,6 @@ def calculate_growth(today_total: int, yesterday_total: int) -> float:
         return 100.0  # Infinite growth
     else:
         return 0.0
-
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Tuple
-import pytz
 
 def get_certification_alerts_data(db: Session, now_ist: datetime) -> Dict[str, Any]:
     """Get categorized certification alerts for expiring/expired certifications"""
@@ -271,13 +269,28 @@ def get_certification_alerts_data(db: Session, now_ist: datetime) -> Dict[str, A
         expiring_later_alerts = []
         
         for cert, employee, training in certifications:
-            # Determine status
-            if cert.status == "expired" or (cert.expires_at and cert.expires_at < now_utc):
-                status = "expired"
-            elif cert.expires_at and cert.expires_at <= (now_utc + timedelta(days=7)):
-                status = "expiring_soon"
+            # Handle timezone comparison properly
+            if cert.expires_at:
+                # Make both datetimes offset-aware for comparison
+                expires_at_aware = cert.expires_at
+                if cert.expires_at.tzinfo is None:
+                    # If expires_at is naive, assume it's UTC
+                    expires_at_aware = pytz.utc.localize(cert.expires_at)
+                
+                # Determine status
+                if cert.status == "expired" or expires_at_aware < now_utc:
+                    status = "expired"
+                elif expires_at_aware <= (now_utc + timedelta(days=7)):
+                    status = "expiring_soon"
+                else:
+                    status = "expiring_later"
             else:
-                status = "expiring_later"
+                # If no expiry date, treat as not expiring
+                if cert.status == "expired":
+                    status = "expired"
+                else:
+                    # Skip certifications without expiry dates (they shouldn't be in alerts)
+                    continue
             
             # Get department
             dept_name = "Unassigned"
@@ -293,7 +306,12 @@ def get_certification_alerts_data(db: Session, now_ist: datetime) -> Dict[str, A
             # Format date
             expiry_date = ""
             if cert.expires_at:
-                expiry_date = cert.expires_at.astimezone(IST).strftime("%Y-%m-%d")
+                # Convert to IST for display
+                if cert.expires_at.tzinfo is None:
+                    expires_at_local = pytz.utc.localize(cert.expires_at).astimezone(IST)
+                else:
+                    expires_at_local = cert.expires_at.astimezone(IST)
+                expiry_date = expires_at_local.strftime("%Y-%m-%d")
             
             alert_item = {
                 "id": str(cert.id),

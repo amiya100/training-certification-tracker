@@ -15,8 +15,13 @@ import { type Employee } from "../types/employee";
 import { type Training } from "../types/training";
 import { type EnrollmentFormData } from "../types/enrollment";
 import { type Department } from "../types/department";
+import type { MenuItemType } from "../App";
 
-const Dashboard: React.FC = () => {
+interface DashboardProps {
+    setActiveMenuItem: (item: MenuItemType) => void;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ setActiveMenuItem }) => {
     const [data, setData] = useState<DashboardData | null>(null);
     const [departments, setDepartments] = useState<Department[]>([]);
     const [employees, setEmployees] = useState<Employee[]>([]);
@@ -29,13 +34,8 @@ const Dashboard: React.FC = () => {
     // Add handler functions for certification alerts
     const handleViewAllAlerts = () => {
         console.log("Navigate to certification alerts page");
+        setActiveMenuItem && setActiveMenuItem("certifications");
         // window.location.href = '/certifications/alerts';
-    };
-
-    const handleRenewCert = (certificationId: string) => {
-        console.log("Renew certification:", certificationId);
-        // You could open a modal or navigate to renewal page
-        addToast(`Renewing certification ${certificationId}`, "info");
     };
 
     // Fetch dashboard data from the single processed endpoint
@@ -175,7 +175,6 @@ const Dashboard: React.FC = () => {
                             loading={loading}
                             error={error}
                             onViewAll={handleViewAllAlerts}
-                            onRenewCert={handleRenewCert}
                             periodLabel="This Month"
                         />
                     </DashboardCard>
@@ -189,9 +188,7 @@ const Dashboard: React.FC = () => {
                             onCreateEnrollment={() =>
                                 setShowCreateEnrollment(true)
                             }
-                            onViewAll={() =>
-                                console.log("Navigate to enrollments page")
-                            }
+                            onViewAll={() => setActiveMenuItem("enrollments")}
                             onRetry={fetchDashboardData}
                         />
                     </DashboardCard>
@@ -202,9 +199,7 @@ const Dashboard: React.FC = () => {
                     data={data.hrMetrics}
                     loading={loading}
                     error={error}
-                    onViewAll={(type: string) =>
-                        console.log(`View all ${type}`)
-                    }
+                    onViewAll={(type: MenuItemType) => setActiveMenuItem(type)}
                     onRetry={fetchDashboardData}
                 />
             </div>
