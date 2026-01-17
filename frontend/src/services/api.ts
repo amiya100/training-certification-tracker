@@ -35,6 +35,8 @@ class ApiService {
         url: string,
         options?: RequestInit
     ): Promise<T> {
+        console.log("using api base", API_BASE);
+
         const response = await fetch(`${API_BASE}${url}`, options);
         if (!response.ok) {
             const errorText = await response.text();
