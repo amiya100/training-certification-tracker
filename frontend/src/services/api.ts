@@ -17,7 +17,7 @@ import {
     type ComplianceMetrics,
 } from "../types/compliance";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_URL;
 
 interface LoginResponse {
     access_token: string;
@@ -35,8 +35,6 @@ class ApiService {
         url: string,
         options?: RequestInit
     ): Promise<T> {
-        console.log("using api base", API_BASE);
-
         const response = await fetch(`${API_BASE}${url}`, options);
         if (!response.ok) {
             const errorText = await response.text();
