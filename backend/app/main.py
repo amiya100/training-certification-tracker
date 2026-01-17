@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
-from app.routes import auth  # import the auth router
+import os
 
 from app.routes import (
     employee_router,
@@ -16,19 +16,34 @@ from app.routes import (
 
 app = FastAPI(title="Training & Certification Tracker")
 
+# Get FRONTEND_URL from environment or use defaults
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
+# Build origins list for CORS
+origins = [
+    "http://localhost:5173",  # Vite default
+    "http://localhost:3000",  # Create React App default
+    frontend_url,
+]
+
+# Add Railway URL automatically (Railway provides this)
+railway_url = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
+if railway_url:
+    origins.append(f"https://{railway_url}")
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[ "http://localhost:5173"],  # React dev servers
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods (GET, POST, PUT, DELETE, etc.)
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Create DB tables
 Base.metadata.create_all(bind=engine)
 
-# Include routers
+# Include routers (NO prefix)
 app.include_router(employee_router)
 app.include_router(department_router)
 app.include_router(training_router)
@@ -38,7 +53,6 @@ app.include_router(dashboard_router)
 app.include_router(compliance_router)
 app.include_router(auth.router)
 
-
 @app.get("/")
 def root():
     return {"message": "Training & Certification Tracker API running"}
@@ -46,3 +60,8 @@ def root():
 @app.get("/health")
 def health_check():
     return {"status": "OK"}
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", "8000"))
+    uvicorn.run(app, host="0.0.0.0", port=port)
