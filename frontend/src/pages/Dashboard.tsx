@@ -29,20 +29,53 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveMenuItem }) => {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [showCreateEnrollment, setShowCreateEnrollment] = useState(false);
+    const [tokenValid, setTokenValid] = useState<boolean | null>(null);
     const { toasts, addToast, removeToast } = useToast();
 
     // Add handler functions for certification alerts
     const handleViewAllAlerts = () => {
         console.log("Navigate to certification alerts page");
         setActiveMenuItem && setActiveMenuItem("certifications");
-        // window.location.href = '/certifications/alerts';
     };
+
+    // Token validation function
+    const validateToken = useCallback(async () => {
+        try {
+            const tokenResponse = await apiService.validateToken();
+            setTokenValid(tokenResponse.valid);
+
+            if (!tokenResponse.valid) {
+                addToast("Session expired. Please log in again.", "warning");
+                // Clear all auth-related data
+                localStorage.removeItem("token");
+                localStorage.removeItem("activeMenuItem");
+            }
+
+            return tokenResponse.valid;
+        } catch (err) {
+            console.error("Token validation failed:", err);
+            setTokenValid(false);
+            addToast(
+                "Authentication error. Please check your connection.",
+                "error"
+            );
+            return false;
+        }
+    }, [addToast]);
 
     // Fetch dashboard data from the single processed endpoint
     const fetchDashboardData = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
+
+            // First validate token
+            const isValid = await validateToken();
+            if (!isValid) {
+                setError("Authentication failed. Please log in again.");
+                setLoading(false);
+                return;
+            }
 
             // Fetch processed dashboard data from single endpoint
             const dashboardData = await apiService.getDashboardData();
@@ -60,11 +93,15 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveMenuItem }) => {
         } finally {
             setLoading(false);
         }
-    }, [addToast]);
+    }, [addToast, validateToken]);
 
     // Fetch raw data for popups (only when needed)
     const fetchRawDataForPopup = useCallback(async () => {
         try {
+            // Validate token before fetching data
+            const isValid = await validateToken();
+            if (!isValid) return;
+
             const [employeesData, trainingsData] = await Promise.all([
                 apiService.getEmployees(),
                 apiService.getTrainings(),
@@ -76,12 +113,19 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveMenuItem }) => {
             console.error("Error fetching raw data for popup:", err);
             // Don't show toast as this is background fetch for popup
         }
-    }, []);
+    }, [validateToken]);
 
-    // Handle save enrollment
+    // Handle save enrollment with token validation
     const handleSaveEnrollment = useCallback(
         async (enrollmentData: EnrollmentFormData) => {
             try {
+                // Validate token before saving
+                const isValid = await validateToken();
+                if (!isValid) {
+                    addToast("Session expired. Please log in again.", "error");
+                    throw new Error("Session expired");
+                }
+
                 await apiService.createEnrollment(enrollmentData);
 
                 setShowCreateEnrollment(false);
@@ -99,7 +143,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveMenuItem }) => {
                 throw error;
             }
         },
-        [addToast, fetchDashboardData]
+        [addToast, fetchDashboardData, validateToken]
     );
 
     // Initial fetch of dashboard data
@@ -122,20 +166,41 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveMenuItem }) => {
         fetchRawDataForPopup,
     ]);
 
-    // Auto-refresh every 5 minutes
+    // Auto-refresh every 5 minutes and validate token periodically
     useEffect(() => {
         const interval = setInterval(fetchDashboardData, 5 * 60 * 1000);
-        return () => clearInterval(interval);
-    }, [fetchDashboardData]);
+
+        // Validate token every 10 minutes
+        const tokenValidationInterval = setInterval(
+            validateToken,
+            10 * 60 * 1000
+        );
+
+        return () => {
+            clearInterval(interval);
+            clearInterval(tokenValidationInterval);
+        };
+    }, [fetchDashboardData, validateToken]);
 
     // Loading state
     if (loading && !data) {
         return <DashboardSkeleton />;
     }
 
-    // Error state
-    if (error || !data) {
-        return <ErrorState error={error} onRetry={fetchDashboardData} />;
+    // Error state - including token validation errors
+    if (error || !data || tokenValid === false) {
+        return (
+            <ErrorState
+                error={
+                    error ||
+                    (tokenValid === false
+                        ? "Authentication failed. Please log in again."
+                        : null)
+                }
+                onRetry={fetchDashboardData}
+                isTokenError={tokenValid === false}
+            />
+        );
     }
 
     return (
@@ -251,9 +316,14 @@ const DashboardSkeleton = () => (
 interface ErrorStateProps {
     error: string | null;
     onRetry: () => void;
+    isTokenError?: boolean;
 }
 
-const ErrorState: React.FC<ErrorStateProps> = ({ error, onRetry }) => (
+const ErrorState: React.FC<ErrorStateProps> = ({
+    error,
+    onRetry,
+    isTokenError,
+}) => (
     <div className="p-5">
         <WelcomeSection departments={[]} onRefreshDashboard={onRetry} />
         <div className="text-center py-20">
@@ -273,15 +343,27 @@ const ErrorState: React.FC<ErrorStateProps> = ({ error, onRetry }) => (
                 </svg>
             </div>
             <h3 className="text-lg font-semibold text-white mb-2">
-                Failed to Load Dashboard
+                {isTokenError
+                    ? "Authentication Error"
+                    : "Failed to Load Dashboard"}
             </h3>
             <p className="text-gray-300 mb-4">{error || "No data available"}</p>
-            <button
-                onClick={onRetry}
-                className="px-4 py-2 bg-blue-600 backdrop-blur-sm border border-blue-500/30 rounded-lg text-white hover:bg-blue-700 transition-all duration-300"
-            >
-                Retry
-            </button>
+            <div className="flex justify-center gap-3">
+                <button
+                    onClick={onRetry}
+                    className="px-4 py-2 bg-blue-600 backdrop-blur-sm border border-blue-500/30 rounded-lg text-white hover:bg-blue-700 transition-all duration-300"
+                >
+                    Retry
+                </button>
+                {isTokenError && (
+                    <button
+                        onClick={() => (window.location.href = "/login")}
+                        className="px-4 py-2 bg-purple-600 backdrop-blur-sm border border-purple-500/30 rounded-lg text-white hover:bg-purple-700 transition-all duration-300"
+                    >
+                        Go to Login
+                    </button>
+                )}
+            </div>
         </div>
     </div>
 );

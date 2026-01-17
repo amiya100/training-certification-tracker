@@ -1,4 +1,4 @@
-// api.ts - Updated with compliance methods AND certificate methods
+// api.ts - Updated with token validation method
 import { type Employee, type EmployeeListResponse } from "../types/employee";
 import {
     type Training,
@@ -19,6 +19,12 @@ import {
 
 const API_BASE = "http://localhost:8000";
 
+interface TokenValidationResponse {
+    valid: boolean;
+    expires_at?: string;
+    message?: string;
+}
+
 class ApiService {
     private async fetchWithError<T>(
         url: string,
@@ -35,6 +41,35 @@ class ApiService {
             return undefined as unknown as T;
         }
         return response.json();
+    }
+
+    // Token Validation
+    async validateToken(): Promise<TokenValidationResponse> {
+        try {
+            return await this.fetchWithError<TokenValidationResponse>(
+                "/auth/validate",
+                {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        // Include your authorization header if needed
+                        Authorization: `Bearer ${localStorage.getItem(
+                            "token"
+                        )}`,
+                    },
+                }
+            );
+        } catch (error) {
+            console.error("Token validation error:", error);
+            // Return invalid if there's an error (network issue, server down, etc.)
+            return {
+                valid: false,
+                message:
+                    error instanceof Error
+                        ? error.message
+                        : "Token validation failed",
+            };
+        }
     }
 
     // Dashboard stats

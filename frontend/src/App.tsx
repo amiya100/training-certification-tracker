@@ -136,7 +136,7 @@ const App: React.FC = () => {
             case "complianceReport":
                 return <ComplianceReport />;
             default:
-                return <Dashboard />;
+                return <Dashboard setActiveMenuItem={setActiveMenuItem} />;
         }
     };
 
