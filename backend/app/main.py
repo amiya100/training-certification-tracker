@@ -17,7 +17,7 @@ from app.routes import (
 app = FastAPI(title="Training & Certification Tracker")
 
 # Get FRONTEND_URL from environment or use defaults
-frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+frontend_url = os.getenv("FRONTEND_URL")
 
 # Build origins list for CORS
 origins = [
@@ -25,11 +25,6 @@ origins = [
     "http://localhost:3000",  # Create React App default
     frontend_url,
 ]
-
-# Add Railway URL automatically (Railway provides this)
-railway_url = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
-if railway_url:
-    origins.append(f"https://{railway_url}")
 
 # Add CORS middleware
 app.add_middleware(
