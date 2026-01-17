@@ -202,13 +202,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                         "Login"
                     )}
                 </button>
-
-                {/* Demo credentials hint */}
-                <div className="mt-4 pt-4 border-t border-white/10 text-xs text-gray-400 text-center">
-                    <p>Demo credentials:</p>
-                    <p>Email: skillflow@gmail.com</p>
-                    <p>Password: skillflow1</p>
-                </div>
             </form>
         </div>
     );
