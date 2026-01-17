@@ -17,7 +17,7 @@ import {
     type ComplianceMetrics,
 } from "../types/compliance";
 
-const API_BASE = import.meta.env.VITE_API_URL;
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 interface LoginResponse {
     access_token: string;
