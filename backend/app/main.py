@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from app.database import engine, Base
 import os
 
@@ -17,20 +16,17 @@ from app.routes import (
 
 app = FastAPI(title="Training & Certification Tracker")
 
-# Force HTTPS
-app.add_middleware(HTTPSRedirectMiddleware)
+# Get FRONTEND_URL from environment or use defaults
+frontend_url = os.getenv("FRONTEND_URL")
 
-# CORS
-frontend_url = os.getenv("FRONTEND_URL", "https://training-certification.netlify.app")
-
+# Build origins list for CORS
 origins = [
-    "http://localhost:5173",
-    "http://localhost:3000",
+    "http://localhost:5173",  # Vite default
+    "http://localhost:3000",  # Create React App default
+    frontend_url,
 ]
 
-if frontend_url:
-    origins.append(frontend_url)
-
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -42,7 +38,7 @@ app.add_middleware(
 # Create DB tables
 Base.metadata.create_all(bind=engine)
 
-# Routers
+# Include routers (NO prefix)
 app.include_router(employee_router)
 app.include_router(department_router)
 app.include_router(training_router)

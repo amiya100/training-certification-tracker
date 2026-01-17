@@ -7,7 +7,7 @@ from ..schemas.certification import Certification, CertificationCreate, Certific
 
 router = APIRouter(prefix="/certifications", tags=["certifications"])
 
-@router.get("/", response_model=CertificationList)
+@router.get("", response_model=CertificationList)
 def read_certifications(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),

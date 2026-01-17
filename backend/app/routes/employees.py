@@ -28,7 +28,7 @@ def create_employee(employee: EmployeeCreate, db: Session = Depends(get_db)):
     
     return crud_employee.create(db, obj_in=employee)
 
-@router.get("/", response_model=EmployeeList)
+@router.get("", response_model=EmployeeList)
 def read_employees(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),

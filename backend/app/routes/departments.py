@@ -19,7 +19,7 @@ def create_department(dept: DepartmentCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Department already exists")
     return crud_department.create(db, obj_in=dept)
 
-@router.get("/", response_model=DepartmentList)
+@router.get("", response_model=DepartmentList)
 def read_departments(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1),

@@ -11,7 +11,7 @@ router = APIRouter(prefix="/trainings", tags=["trainings"])
 def create_training(training: TrainingCreate, db: Session = Depends(get_db)):
     return crud_training.create(db, obj_in=training)
 
-@router.get("/", response_model=TrainingList)
+@router.get("", response_model=TrainingList)
 def read_trainings(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),

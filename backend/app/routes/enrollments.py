@@ -23,7 +23,7 @@ def create_enrollment(enrollment: EnrollmentCreate, db: Session = Depends(get_db
     
     return crud_enrollment.create(db, obj_in=enrollment)
 
-@router.get("/", response_model=EnrollmentList)
+@router.get("", response_model=EnrollmentList)
 def read_enrollments(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
