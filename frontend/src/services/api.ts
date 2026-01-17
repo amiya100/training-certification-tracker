@@ -1,4 +1,4 @@
-// api.ts - Updated with token validation method
+// api.ts - Complete with all auth methods
 import { type Employee, type EmployeeListResponse } from "../types/employee";
 import {
     type Training,
@@ -19,6 +19,11 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+interface LoginResponse {
+    access_token: string;
+    token_type: string;
+}
+
 interface TokenValidationResponse {
     valid: boolean;
     expires_at?: string;
@@ -37,14 +42,49 @@ class ApiService {
         }
         // Handle 204 No Content (DELETE responses)
         if (response.status === 204) {
-            // For DELETE requests, return nothing (void)
             return undefined as unknown as T;
         }
         return response.json();
     }
 
+    // ================= AUTH METHODS =================
+
+    // Login method
+    async login(email: string, password: string): Promise<LoginResponse> {
+        try {
+            const response = await this.fetchWithError<LoginResponse>(
+                "/auth/login",
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password }),
+                }
+            );
+
+            // Store token in localStorage
+            if (response.access_token) {
+                localStorage.setItem("token", response.access_token);
+            }
+
+            return response;
+        } catch (error) {
+            if (error instanceof Error) {
+                throw new Error(`Login failed: ${error.message}`);
+            }
+            throw new Error("Login failed: Unknown error");
+        }
+    }
+
     // Token Validation
     async validateToken(): Promise<TokenValidationResponse> {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            return {
+                valid: false,
+                message: "No token found in localStorage",
+            };
+        }
+
         try {
             return await this.fetchWithError<TokenValidationResponse>(
                 "/auth/validate",
@@ -52,16 +92,12 @@ class ApiService {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",
-                        // Include your authorization header if needed
-                        Authorization: `Bearer ${localStorage.getItem(
-                            "token"
-                        )}`,
+                        Authorization: `Bearer ${token}`,
                     },
                 }
             );
         } catch (error) {
             console.error("Token validation error:", error);
-            // Return invalid if there's an error (network issue, server down, etc.)
             return {
                 valid: false,
                 message:
@@ -71,6 +107,24 @@ class ApiService {
             };
         }
     }
+
+    // Logout method
+    logout(): void {
+        localStorage.removeItem("token");
+    }
+
+    // Get current token
+    getToken(): string | null {
+        return localStorage.getItem("token");
+    }
+
+    // Check if user is authenticated
+    isAuthenticated(): boolean {
+        const token = localStorage.getItem("token");
+        return !!token;
+    }
+
+    // ================= API METHODS =================
 
     // Dashboard stats
     async getDashboardData() {

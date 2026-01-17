@@ -11,6 +11,7 @@ import Enrollments from "./pages/Enrollments";
 import Certifications from "./pages/Certifications";
 import ComplianceReport from "./pages/ComplianceReport";
 import CertificateView from "./pages/CertificateView";
+import { apiService } from "./services/api";
 
 export type MenuItemType =
     | "dashboard"
@@ -21,16 +22,16 @@ export type MenuItemType =
     | "certifications"
     | "complianceReport";
 
-const TOKEN_KEY = "token";
 const MENU_KEY = "activeMenuItem";
 
 const App: React.FC = () => {
     /* ================= AUTH STATE ================= */
     const [isAuthenticated, setIsAuthenticated] = useState(() => {
-        // Check for token on initial load
-        const token = localStorage.getItem(TOKEN_KEY);
-        return !!token;
+        // Check if token exists and is valid on initial load
+        return apiService.isAuthenticated();
     });
+
+    const [authLoading, setAuthLoading] = useState(true);
 
     /* ================= MENU STATE ================= */
     const [activeMenuItem, setActiveMenuItem] = useState<MenuItemType>(() => {
@@ -56,6 +57,31 @@ const App: React.FC = () => {
         number | null
     >(null);
 
+    /* ================= VALIDATE TOKEN ON MOUNT ================= */
+    useEffect(() => {
+        const validateTokenOnStart = async () => {
+            if (apiService.isAuthenticated()) {
+                try {
+                    const validation = await apiService.validateToken();
+                    if (!validation.valid) {
+                        // Token is invalid, logout
+                        apiService.logout();
+                        setIsAuthenticated(false);
+                    } else {
+                        setIsAuthenticated(true);
+                    }
+                } catch (error) {
+                    console.error("Token validation error:", error);
+                    apiService.logout();
+                    setIsAuthenticated(false);
+                }
+            }
+            setAuthLoading(false);
+        };
+
+        validateTokenOnStart();
+    }, []);
+
     /* ================= SAVE MENU ITEM ================= */
     useEffect(() => {
         if (isAuthenticated) {
@@ -65,17 +91,13 @@ const App: React.FC = () => {
 
     /* ================= LOGIN/LOGOUT EFFECT ================= */
     useEffect(() => {
-        // Check authentication status on mount and when token changes
+        // Listen for storage changes (for example, if token is cleared in another tab)
         const checkAuth = () => {
-            const token = localStorage.getItem(TOKEN_KEY);
-            setIsAuthenticated(!!token);
+            const isAuth = apiService.isAuthenticated();
+            setIsAuthenticated(isAuth);
         };
 
-        // Listen for storage changes (for example, if token is cleared in another tab)
         window.addEventListener("storage", checkAuth);
-
-        // Initial check
-        checkAuth();
 
         return () => {
             window.removeEventListener("storage", checkAuth);
@@ -84,18 +106,38 @@ const App: React.FC = () => {
 
     /* ================= LOGIN HANDLER ================= */
     const handleLogin = () => {
-        // This should be called from Login component after successful login
-        // For now, just set authenticated to true
         setIsAuthenticated(true);
+        setActiveMenuItem("dashboard");
     };
 
     /* ================= LOGOUT HANDLER ================= */
     const handleLogout = () => {
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(MENU_KEY);
+        apiService.logout();
         setIsAuthenticated(false);
         setActiveMenuItem("dashboard");
+        setViewingCertificateId(null);
     };
+
+    /* ================= TOKEN VALIDATION INTERVAL ================= */
+    useEffect(() => {
+        if (!isAuthenticated) return;
+
+        const validateTokenPeriodically = async () => {
+            try {
+                const validation = await apiService.validateToken();
+                if (!validation.valid) {
+                    handleLogout();
+                }
+            } catch (error) {
+                console.error("Periodic token validation failed:", error);
+            }
+        };
+
+        // Validate token every 5 minutes
+        const interval = setInterval(validateTokenPeriodically, 5 * 60 * 1000);
+
+        return () => clearInterval(interval);
+    }, [isAuthenticated]);
 
     /* ================= CERTIFICATE HANDLERS ================= */
     const handleViewCertificate = (certificateId: number) => {
@@ -140,6 +182,18 @@ const App: React.FC = () => {
         }
     };
 
+    /* ================= LOADING STATE ================= */
+    if (authLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-dark-bg text-white">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+                    <p className="mt-4">Checking authentication...</p>
+                </div>
+            </div>
+        );
+    }
+
     /* ================= LOGIN ================= */
     if (!isAuthenticated) {
         return <Login onLogin={handleLogin} />;
@@ -160,7 +214,7 @@ const App: React.FC = () => {
                     activeMenuItem={activeMenuItem}
                     showBackButton={viewingCertificateId !== null}
                     onBack={handleBackToCertifications}
-                    onLogout={handleLogout} // Optionally pass to Header too
+                    onLogout={handleLogout}
                 />
                 <main className="flex-1 overflow-auto">{renderContent()}</main>
             </div>
