@@ -47,28 +47,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         }
     };
 
-    // Test connection button (optional, for debugging)
-    const testConnection = async () => {
-        try {
-            const response = await fetch(
-                `${
-                    import.meta.env.VITE_API_URL || "http://localhost:8000"
-                }/health`
-            );
-            if (response.ok) {
-                alert(
-                    `✅ Connected to API at: ${
-                        import.meta.env.VITE_API_URL || "http://localhost:8000"
-                    }`
-                );
-            } else {
-                alert(`❌ API error: ${response.status}`);
-            }
-        } catch (err) {
-            alert(`❌ Cannot connect to API. Make sure backend is running.`);
-        }
-    };
-
     return (
         <div
             className="flex items-center justify-center min-h-screen text-white bg-cover bg-center"
@@ -98,24 +76,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 <h2 className="text-xl font-semibold text-center mb-6">
                     Sign in
                 </h2>
-
-                {/* Debug info (visible in development only) */}
-                {import.meta.env.DEV && (
-                    <div className="mb-4 p-2 text-xs bg-blue-900/30 rounded">
-                        <p>
-                            API:{" "}
-                            {import.meta.env.VITE_API_URL ||
-                                "http://localhost:8000"}
-                        </p>
-                        <button
-                            type="button"
-                            onClick={testConnection}
-                            className="mt-1 text-blue-400 hover:underline"
-                        >
-                            Test Connection
-                        </button>
-                    </div>
-                )}
 
                 {error && (
                     <div className="mb-4 p-3 text-sm bg-red-900/30 border border-red-700 rounded-lg">
