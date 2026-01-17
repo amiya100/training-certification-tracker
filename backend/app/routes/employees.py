@@ -8,7 +8,7 @@ from ..schemas.employee import Employee, EmployeeCreate, EmployeeUpdate, Employe
 
 router = APIRouter(prefix="/employees", tags=["employees"])
 
-@router.post("/", response_model=Employee, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=Employee, status_code=status.HTTP_201_CREATED)
 def create_employee(employee: EmployeeCreate, db: Session = Depends(get_db)):
     # Check if employee with email already exists
     db_employee = crud_employee.get_by_email(db, email=employee.email)

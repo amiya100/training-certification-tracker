@@ -13,7 +13,7 @@ from ..schemas.department import (
 
 router = APIRouter(prefix="/departments", tags=["departments"])
 
-@router.post("/", response_model=Department, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=Department, status_code=status.HTTP_201_CREATED)
 def create_department(dept: DepartmentCreate, db: Session = Depends(get_db)):
     if crud_department.get_by_name(db, dept.name):
         raise HTTPException(status_code=400, detail="Department already exists")

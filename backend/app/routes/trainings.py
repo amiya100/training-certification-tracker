@@ -7,7 +7,7 @@ from ..schemas.training import Training, TrainingCreate, TrainingUpdate, Trainin
 
 router = APIRouter(prefix="/trainings", tags=["trainings"])
 
-@router.post("/", response_model=Training, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=Training, status_code=status.HTTP_201_CREATED)
 def create_training(training: TrainingCreate, db: Session = Depends(get_db)):
     return crud_training.create(db, obj_in=training)
 

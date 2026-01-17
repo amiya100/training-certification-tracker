@@ -10,7 +10,7 @@ from ..schemas.enrollment import Enrollment, EnrollmentCreate, EnrollmentUpdate,
 
 router = APIRouter(prefix="/enrollments", tags=["enrollments"])
 
-@router.post("/", response_model=Enrollment, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=Enrollment, status_code=status.HTTP_201_CREATED)
 def create_enrollment(enrollment: EnrollmentCreate, db: Session = Depends(get_db)):
     # Check if employee is already enrolled in this training
     existing_enrollments = crud_enrollment.get_by_employee(db, enrollment.employee_id)

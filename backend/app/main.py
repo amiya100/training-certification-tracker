@@ -17,7 +17,9 @@ from app.routes import (
 app = FastAPI(title="Training & Certification Tracker")
 
 # Get FRONTEND_URL from environment or use defaults
-frontend_url = os.getenv("FRONTEND_URL")
+frontend_url = os.getenv(
+    "FRONTEND_URL"
+)
 
 # Build origins list for CORS
 origins = [
