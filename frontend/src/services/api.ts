@@ -1,4 +1,4 @@
-// api.ts - Complete with all auth methods
+// api.ts - Updated with protected routes
 import { type Employee, type EmployeeListResponse } from "../types/employee";
 import {
     type Training,
@@ -24,39 +24,93 @@ interface LoginResponse {
     token_type: string;
 }
 
-interface TokenValidationResponse {
-    valid: boolean;
-    expires_at?: string;
-    message?: string;
+interface FetchOptions extends RequestInit {
+    skipAuth?: boolean; // Optional flag to skip authentication for certain endpoints
 }
 
 class ApiService {
     private async fetchWithError<T>(
         url: string,
-        options?: RequestInit
+        options: FetchOptions = {}
     ): Promise<T> {
-        const response = await fetch(`${API_BASE}${url}`, options);
+        // Destructure to separate custom options from fetch options
+        const { skipAuth = false, ...fetchOptions } = options;
+
+        // Prepare headers
+        const headers: Record<string, string> = {
+            ...((fetchOptions.headers as Record<string, string>) || {}),
+        };
+
+        // Add Authorization header if not skipping auth
+        if (!skipAuth && this.isAuthenticated()) {
+            const token = this.getToken();
+            if (token) {
+                headers["Authorization"] = `Bearer ${token}`;
+            }
+        }
+
+        // Ensure Content-Type for POST/PUT requests if not already set
+        if (
+            ["POST", "PUT", "PATCH"].includes(fetchOptions.method || "") &&
+            !headers["Content-Type"]
+        ) {
+            headers["Content-Type"] = "application/json";
+        }
+
+        const response = await fetch(`${API_BASE}${url}`, {
+            ...fetchOptions,
+            headers,
+        });
+
+        // Handle unauthorized access (401)
+        if (response.status === 401) {
+            // Clear invalid token
+            this.logout();
+
+            // Redirect to login if not already on login page
+            if (!window.location.pathname.includes("/login")) {
+                window.location.href = "/login";
+            }
+
+            throw new Error("Authentication required. Please log in again.");
+        }
+
+        // Handle forbidden access (403)
+        if (response.status === 403) {
+            throw new Error(
+                "You do not have permission to access this resource."
+            );
+        }
+
         if (!response.ok) {
             const errorText = await response.text();
             throw new Error(`API Error ${response.status}: ${errorText}`);
         }
+
         // Handle 204 No Content (DELETE responses)
         if (response.status === 204) {
             return undefined as unknown as T;
         }
+
+        // Handle empty responses
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            return undefined as unknown as T;
+        }
+
         return response.json();
     }
 
     // ================= AUTH METHODS =================
 
-    // Login method
+    // Login method - skipAuth is true since this doesn't require token
     async login(email: string, password: string): Promise<LoginResponse> {
         try {
             const response = await this.fetchWithError<LoginResponse>(
                 "/auth/login",
                 {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    skipAuth: true,
                     body: JSON.stringify({ email, password }),
                 }
             );
@@ -75,42 +129,11 @@ class ApiService {
         }
     }
 
-    // Token Validation
-    async validateToken(): Promise<TokenValidationResponse> {
-        const token = localStorage.getItem("token");
-        if (!token) {
-            return {
-                valid: false,
-                message: "No token found in localStorage",
-            };
-        }
-
-        try {
-            return await this.fetchWithError<TokenValidationResponse>(
-                "/auth/validate",
-                {
-                    method: "GET",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
-        } catch (error) {
-            console.error("Token validation error:", error);
-            return {
-                valid: false,
-                message:
-                    error instanceof Error
-                        ? error.message
-                        : "Token validation failed",
-            };
-        }
-    }
-
     // Logout method
     logout(): void {
         localStorage.removeItem("token");
+        // Optional: Notify backend about logout
+        // this.fetchWithError("/auth/logout", { method: "POST" }).catch(() => {});
     }
 
     // Get current token
@@ -124,14 +147,14 @@ class ApiService {
         return !!token;
     }
 
-    // ================= API METHODS =================
+    // ================= PROTECTED API METHODS =================
 
-    // Dashboard stats
+    // Dashboard stats (protected)
     async getDashboardData() {
         return this.fetchWithError<any>("/api/dashboard/dashboard-data");
     }
 
-    // Employees
+    // Employees (protected)
     async getEmployees(): Promise<Employee[]> {
         const data = await this.fetchWithError<EmployeeListResponse>(
             "/employees"
@@ -146,7 +169,6 @@ class ApiService {
     async createEmployee(employeeData: any): Promise<Employee> {
         return this.fetchWithError("/employees", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(employeeData),
         });
     }
@@ -154,7 +176,6 @@ class ApiService {
     async updateEmployee(employeeData: Employee): Promise<Employee> {
         return this.fetchWithError<Employee>(`/employees/${employeeData.id}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(employeeData),
         });
     }
@@ -165,7 +186,7 @@ class ApiService {
         });
     }
 
-    // Departments
+    // Departments (protected)
     async getDepartments(): Promise<Department[]> {
         const data = await this.fetchWithError<DepartmentListResponses>(
             "/departments"
@@ -176,7 +197,6 @@ class ApiService {
     async createDepartment(departmentData: any): Promise<Department> {
         const response = await this.fetchWithError<Department>("/departments", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(departmentData),
         });
         return response;
@@ -187,7 +207,6 @@ class ApiService {
     ): Promise<Department> {
         return this.fetchWithError(`/departments/${departmentData.id}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(departmentData),
         });
     }
@@ -198,7 +217,7 @@ class ApiService {
         });
     }
 
-    // Trainings
+    // Trainings (protected)
     async getTrainings(): Promise<Training[]> {
         const data = await this.fetchWithError<TrainingListResponse>(
             "/trainings"
@@ -213,7 +232,6 @@ class ApiService {
     async createTraining(trainingData: TrainingFormData): Promise<Training> {
         return this.fetchWithError<Training>("/trainings", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(trainingData),
         });
     }
@@ -225,7 +243,6 @@ class ApiService {
         const { id, ...updateData } = trainingData;
         return this.fetchWithError<Training>(`/trainings/${id}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(updateData),
         });
     }
@@ -236,7 +253,7 @@ class ApiService {
         });
     }
 
-    // Enrollments
+    // Enrollments (protected)
     async getEnrollments(): Promise<Enrollment[]> {
         const data = await this.fetchWithError<
             { enrollments: Enrollment[] } | Enrollment[]
@@ -249,7 +266,6 @@ class ApiService {
     ): Promise<Enrollment> {
         return this.fetchWithError<Enrollment>("/enrollments", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(enrollmentData),
         });
     }
@@ -260,7 +276,6 @@ class ApiService {
     ): Promise<Enrollment> {
         return this.fetchWithError<Enrollment>(`/enrollments/${enrollmentId}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(enrollmentData),
         });
     }
@@ -273,7 +288,6 @@ class ApiService {
             `/enrollments/${enrollmentId}/progress?progress=${progress}`,
             {
                 method: "PATCH",
-                headers: { "Content-Type": "application/json" },
             }
         );
     }
@@ -283,7 +297,6 @@ class ApiService {
             `/enrollments/${enrollmentId}/complete`,
             {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
             }
         );
     }
@@ -294,7 +307,7 @@ class ApiService {
         });
     }
 
-    // Certifications
+    // Certifications (protected)
     async getCertifications(): Promise<Certification[]> {
         const data = await this.fetchWithError<
             { certifications: Certification[] } | Certification[]
@@ -306,7 +319,7 @@ class ApiService {
         return this.fetchWithError<Certification>(`/certifications/${id}`);
     }
 
-    // Compliance Report Methods
+    // Compliance Report Methods (protected)
     async getComplianceReport(
         filters: ReportFilters
     ): Promise<ComplianceMetrics> {
@@ -314,7 +327,6 @@ class ApiService {
             "/api/compliance/report",
             {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(filters),
             }
         );
@@ -329,7 +341,10 @@ class ApiService {
             `${API_BASE}/api/compliance/export/${format}`,
             {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${this.getToken()}`,
+                },
                 body: JSON.stringify(filters),
             }
         );

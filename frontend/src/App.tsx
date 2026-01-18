@@ -31,8 +31,6 @@ const App: React.FC = () => {
         return apiService.isAuthenticated();
     });
 
-    const [authLoading, setAuthLoading] = useState(true);
-
     /* ================= MENU STATE ================= */
     const [activeMenuItem, setActiveMenuItem] = useState<MenuItemType>(() => {
         // Try to get saved menu item from localStorage
@@ -56,31 +54,6 @@ const App: React.FC = () => {
     const [viewingCertificateId, setViewingCertificateId] = useState<
         number | null
     >(null);
-
-    /* ================= VALIDATE TOKEN ON MOUNT ================= */
-    useEffect(() => {
-        const validateTokenOnStart = async () => {
-            if (apiService.isAuthenticated()) {
-                try {
-                    const validation = await apiService.validateToken();
-                    if (!validation.valid) {
-                        // Token is invalid, logout
-                        apiService.logout();
-                        setIsAuthenticated(false);
-                    } else {
-                        setIsAuthenticated(true);
-                    }
-                } catch (error) {
-                    console.error("Token validation error:", error);
-                    apiService.logout();
-                    setIsAuthenticated(false);
-                }
-            }
-            setAuthLoading(false);
-        };
-
-        validateTokenOnStart();
-    }, []);
 
     /* ================= SAVE MENU ITEM ================= */
     useEffect(() => {
@@ -117,27 +90,6 @@ const App: React.FC = () => {
         setActiveMenuItem("dashboard");
         setViewingCertificateId(null);
     };
-
-    /* ================= TOKEN VALIDATION INTERVAL ================= */
-    useEffect(() => {
-        if (!isAuthenticated) return;
-
-        const validateTokenPeriodically = async () => {
-            try {
-                const validation = await apiService.validateToken();
-                if (!validation.valid) {
-                    handleLogout();
-                }
-            } catch (error) {
-                console.error("Periodic token validation failed:", error);
-            }
-        };
-
-        // Validate token every 5 minutes
-        const interval = setInterval(validateTokenPeriodically, 5 * 60 * 1000);
-
-        return () => clearInterval(interval);
-    }, [isAuthenticated]);
 
     /* ================= CERTIFICATE HANDLERS ================= */
     const handleViewCertificate = (certificateId: number) => {
@@ -181,18 +133,6 @@ const App: React.FC = () => {
                 return <Dashboard setActiveMenuItem={setActiveMenuItem} />;
         }
     };
-
-    /* ================= LOADING STATE ================= */
-    if (authLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen bg-dark-bg text-white">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-                    <p className="mt-4">Checking authentication...</p>
-                </div>
-            </div>
-        );
-    }
 
     /* ================= LOGIN ================= */
     if (!isAuthenticated) {

@@ -29,7 +29,6 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveMenuItem }) => {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [showCreateEnrollment, setShowCreateEnrollment] = useState(false);
-    const [tokenValid, setTokenValid] = useState<boolean | null>(null);
     const { toasts, addToast, removeToast } = useToast();
 
     // Add handler functions for certification alerts
@@ -38,44 +37,11 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveMenuItem }) => {
         setActiveMenuItem && setActiveMenuItem("certifications");
     };
 
-    // Token validation function
-    const validateToken = useCallback(async () => {
-        try {
-            const tokenResponse = await apiService.validateToken();
-            setTokenValid(tokenResponse.valid);
-
-            if (!tokenResponse.valid) {
-                addToast("Session expired. Please log in again.", "warning");
-                // Clear all auth-related data
-                localStorage.removeItem("token");
-                localStorage.removeItem("activeMenuItem");
-            }
-
-            return tokenResponse.valid;
-        } catch (err) {
-            console.error("Token validation failed:", err);
-            setTokenValid(false);
-            addToast(
-                "Authentication error. Please check your connection.",
-                "error"
-            );
-            return false;
-        }
-    }, [addToast]);
-
     // Fetch dashboard data from the single processed endpoint
     const fetchDashboardData = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
-
-            // First validate token
-            const isValid = await validateToken();
-            if (!isValid) {
-                setError("Authentication failed. Please log in again.");
-                setLoading(false);
-                return;
-            }
 
             // Fetch processed dashboard data from single endpoint
             const dashboardData = await apiService.getDashboardData();
@@ -93,15 +59,11 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveMenuItem }) => {
         } finally {
             setLoading(false);
         }
-    }, [addToast, validateToken]);
+    }, [addToast]);
 
     // Fetch raw data for popups (only when needed)
     const fetchRawDataForPopup = useCallback(async () => {
         try {
-            // Validate token before fetching data
-            const isValid = await validateToken();
-            if (!isValid) return;
-
             const [employeesData, trainingsData] = await Promise.all([
                 apiService.getEmployees(),
                 apiService.getTrainings(),
@@ -113,19 +75,12 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveMenuItem }) => {
             console.error("Error fetching raw data for popup:", err);
             // Don't show toast as this is background fetch for popup
         }
-    }, [validateToken]);
+    }, []);
 
     // Handle save enrollment with token validation
     const handleSaveEnrollment = useCallback(
         async (enrollmentData: EnrollmentFormData) => {
             try {
-                // Validate token before saving
-                const isValid = await validateToken();
-                if (!isValid) {
-                    addToast("Session expired. Please log in again.", "error");
-                    throw new Error("Session expired");
-                }
-
                 await apiService.createEnrollment(enrollmentData);
 
                 setShowCreateEnrollment(false);
@@ -143,7 +98,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveMenuItem }) => {
                 throw error;
             }
         },
-        [addToast, fetchDashboardData, validateToken]
+        [addToast, fetchDashboardData]
     );
 
     // Initial fetch of dashboard data
@@ -166,21 +121,11 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveMenuItem }) => {
         fetchRawDataForPopup,
     ]);
 
-    // Auto-refresh every 5 minutes and validate token periodically
+    // Auto-refresh every 5 minutes
     useEffect(() => {
         const interval = setInterval(fetchDashboardData, 5 * 60 * 1000);
-
-        // Validate token every 10 minutes
-        const tokenValidationInterval = setInterval(
-            validateToken,
-            10 * 60 * 1000
-        );
-
-        return () => {
-            clearInterval(interval);
-            clearInterval(tokenValidationInterval);
-        };
-    }, [fetchDashboardData, validateToken]);
+        return () => clearInterval(interval);
+    }, [fetchDashboardData]);
 
     // Loading state
     if (loading && !data) {
@@ -188,19 +133,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveMenuItem }) => {
     }
 
     // Error state - including token validation errors
-    if (error || !data || tokenValid === false) {
-        return (
-            <ErrorState
-                error={
-                    error ||
-                    (tokenValid === false
-                        ? "Authentication failed. Please log in again."
-                        : null)
-                }
-                onRetry={fetchDashboardData}
-                isTokenError={tokenValid === false}
-            />
-        );
+    if (error || !data) {
+        return <ErrorState error={error} onRetry={fetchDashboardData} />;
     }
 
     return (
