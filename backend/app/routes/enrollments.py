@@ -12,7 +12,10 @@ from ..dependecies import get_current_user
 router = APIRouter(prefix="/enrollments", tags=["enrollments"])
 
 @router.post("", response_model=Enrollment, status_code=status.HTTP_201_CREATED)
-def create_enrollment(enrollment: EnrollmentCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+def create_enrollment(
+    enrollment: EnrollmentCreate, 
+    db: Session = Depends(get_db), 
+    current_user: dict = Depends(get_current_user)):
     # Check if employee is already enrolled in this training
     existing_enrollments = crud_enrollment.get_by_employee(db, enrollment.employee_id)
     for existing in existing_enrollments:
@@ -102,7 +105,10 @@ def update_enrollment_progress(
     return obj
 
 @router.post("/{enrollment_id}/complete", response_model=Enrollment)
-def complete_enrollment(enrollment_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+def complete_enrollment(
+    enrollment_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: dict = Depends(get_current_user)):
     """Mark enrollment as completed (sets progress to 100)"""
     obj = crud_enrollment.complete_enrollment(db, enrollment_id)
     if not obj:
@@ -114,7 +120,10 @@ def complete_enrollment(enrollment_id: int, db: Session = Depends(get_db), curre
     return obj
 
 @router.delete("/{enrollment_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_enrollment(enrollment_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+def delete_enrollment(
+    enrollment_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: dict = Depends(get_current_user)):
     obj = crud_enrollment.remove(db, id=enrollment_id)
     if not obj:
         raise HTTPException(404, "Enrollment not found")
