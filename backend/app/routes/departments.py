@@ -10,11 +10,15 @@ from ..schemas.department import (
     DepartmentUpdate,
     DepartmentList
 )
+from ..dependecies import get_current_user
 
 router = APIRouter(prefix="/departments", tags=["departments"])
 
 @router.post("", response_model=Department, status_code=status.HTTP_201_CREATED)
-def create_department(dept: DepartmentCreate, db: Session = Depends(get_db)):
+def create_department(
+    dept: DepartmentCreate, 
+    db: Session = Depends(get_db), 
+    current_user: dict = Depends(get_current_user)):
     if crud_department.get_by_name(db, dept.name):
         raise HTTPException(status_code=400, detail="Department already exists")
     return crud_department.create(db, obj_in=dept)
@@ -23,7 +27,8 @@ def create_department(dept: DepartmentCreate, db: Session = Depends(get_db)):
 def read_departments(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db), 
+    current_user: dict = Depends(get_current_user)
 ):
     # Use the new method that includes employee counts
     depts = crud_department.get_all_with_employee_counts(db, skip, limit)
@@ -39,7 +44,8 @@ def read_departments(
 def update_department(
     dept_id: int,
     dept_update: DepartmentUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db), 
+    current_user: dict = Depends(get_current_user)
 ):
     dept = crud_department.get(db, dept_id)
     if not dept:
@@ -54,7 +60,10 @@ def update_department(
     return crud_department.update(db, db_obj=dept, obj_in=dept_update)
 
 @router.delete("/{dept_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_department(dept_id: int, db: Session = Depends(get_db)):
+def delete_department(
+    dept_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: dict = Depends(get_current_user)):
     dept = crud_department.remove(db, id=dept_id)
     if not dept:
         raise HTTPException(status_code=404, detail="Department not found")

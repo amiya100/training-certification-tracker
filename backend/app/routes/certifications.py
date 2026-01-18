@@ -4,6 +4,7 @@ from typing import List, Optional
 from ..database import get_db
 from ..crud import certification as crud_certification
 from ..schemas.certification import Certification, CertificationCreate, CertificationUpdate, CertificationList
+from ..dependecies import get_current_user
 
 router = APIRouter(prefix="/certifications", tags=["certifications"])
 
@@ -13,7 +14,8 @@ def read_certifications(
     limit: int = Query(100, ge=1, le=1000),
     status: Optional[str] = Query(None, description="Filter by status"),
     employee_id: Optional[int] = Query(None, description="Filter by employee ID"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db), 
+    current_user: dict = Depends(get_current_user)
 ):
     items = crud_certification.get_multi(db, skip, limit)
     
@@ -27,7 +29,10 @@ def read_certifications(
     return CertificationList(certifications=items, total=total, skip=skip, limit=limit)
 
 @router.get("/{certification_id}", response_model=Certification)
-def read_certification(certification_id: int, db: Session = Depends(get_db)):
+def read_certification(
+    certification_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: dict = Depends(get_current_user)):
     obj = crud_certification.get(db, certification_id)
     if not obj:
         raise HTTPException(404, "Certification not found")

@@ -7,6 +7,7 @@ from typing import Dict, List, Any
 from ..database import get_db
 from ..models import Employee, Training, Department, Enrollment, Certification
 from ..schemas.dashboard import DashboardDataResponse
+from ..dependecies import get_current_user
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -14,7 +15,9 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 IST = pytz.timezone('Asia/Kolkata')
 
 @router.get("/dashboard-data", response_model=DashboardDataResponse)
-async def get_dashboard_data(db: Session = Depends(get_db)):
+async def get_dashboard_data(
+    db: Session = Depends(get_db), 
+    current_user: dict = Depends(get_current_user)):
     """
     Returns fully processed dashboard data including:
     - Stats with growth percentages

@@ -7,11 +7,12 @@ from ..crud import certification as crud_certification
 from ..schemas.certification import CertificationCreate
 from datetime import datetime, timedelta
 from ..schemas.enrollment import Enrollment, EnrollmentCreate, EnrollmentUpdate, EnrollmentList
+from ..dependecies import get_current_user
 
 router = APIRouter(prefix="/enrollments", tags=["enrollments"])
 
 @router.post("", response_model=Enrollment, status_code=status.HTTP_201_CREATED)
-def create_enrollment(enrollment: EnrollmentCreate, db: Session = Depends(get_db)):
+def create_enrollment(enrollment: EnrollmentCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     # Check if employee is already enrolled in this training
     existing_enrollments = crud_enrollment.get_by_employee(db, enrollment.employee_id)
     for existing in existing_enrollments:
@@ -32,7 +33,8 @@ def read_enrollments(
     training_id: Optional[int] = Query(None, description="Filter by training ID"),
     min_progress: Optional[int] = Query(None, ge=0, le=100, description="Minimum progress percentage"),
     max_progress: Optional[int] = Query(None, ge=0, le=100, description="Maximum progress percentage"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db), 
+    current_user: dict = Depends(get_current_user)
 ):
     items = crud_enrollment.get_multi(db, skip, limit)
     
@@ -55,7 +57,8 @@ def read_enrollments(
 def update_enrollment(
     enrollment_id: int,
     enrollment_update: EnrollmentUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db), 
+    current_user: dict = Depends(get_current_user)
 ):
     obj = crud_enrollment.get(db, enrollment_id)
     if not obj:
@@ -84,7 +87,8 @@ def update_enrollment(
 def update_enrollment_progress(
     enrollment_id: int,
     progress: int = Query(..., ge=0, le=100, description="Progress percentage (0-100)"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db), 
+    current_user: dict = Depends(get_current_user)
 ):
     """Update the progress percentage for an enrollment"""
     obj = crud_enrollment.update_progress(db, enrollment_id=enrollment_id, progress=progress)
@@ -98,7 +102,7 @@ def update_enrollment_progress(
     return obj
 
 @router.post("/{enrollment_id}/complete", response_model=Enrollment)
-def complete_enrollment(enrollment_id: int, db: Session = Depends(get_db)):
+def complete_enrollment(enrollment_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Mark enrollment as completed (sets progress to 100)"""
     obj = crud_enrollment.complete_enrollment(db, enrollment_id)
     if not obj:
@@ -110,7 +114,7 @@ def complete_enrollment(enrollment_id: int, db: Session = Depends(get_db)):
     return obj
 
 @router.delete("/{enrollment_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_enrollment(enrollment_id: int, db: Session = Depends(get_db)):
+def delete_enrollment(enrollment_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     obj = crud_enrollment.remove(db, id=enrollment_id)
     if not obj:
         raise HTTPException(404, "Enrollment not found")

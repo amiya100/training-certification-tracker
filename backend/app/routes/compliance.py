@@ -11,13 +11,15 @@ from app.schemas import (
     ComplianceMetrics,
 )
 from ..crud import compliance  # Changed from app.crud to app.services
+from ..dependecies import get_current_user
 
 router = APIRouter(prefix="/api/compliance", tags=["compliance"])
 
 @router.post("/report", response_model=ComplianceMetrics)
 async def generate_compliance_report(
     filters: ReportFilters,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db), 
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Generate comprehensive compliance report with detailed metrics
@@ -56,7 +58,8 @@ async def generate_compliance_report(
 async def export_compliance_report(
     format: str,
     filters: ReportFilters,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db), 
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Export compliance report in specified format
