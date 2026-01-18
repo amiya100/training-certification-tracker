@@ -13,8 +13,8 @@ A comprehensive platform to track employee training programs, certifications, an
 
 
 ## 🌐 Live Deployment
-Live Website: https://training-certification.netlify.app/
-Demo Credentials: Email: skillflow@gmail.com | Password: skillflow1
+**Live Website:** https://training-certification.netlify.app/  
+**Demo Credentials:** Email: skillflow@gmail.com | Password: skillflow1
 
 
 ## 🛠️ Tech Stack
