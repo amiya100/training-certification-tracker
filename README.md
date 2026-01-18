@@ -1,23 +1,23 @@
 # Training and Certification Tracking System
-
 A comprehensive platform to track employee training programs, certifications, and validity periods with compliance reporting.
 
-## ✨ Features
 
-📊 **Dashboard & Analytics** - Comprehensive overview with key metrics, employee status tracking, certification expiry alerts, training progress
-👥 **Employee Management** - Create and manage employees in the company
-🎓 **Training Management** - Create and manage training courses
-📋 **Enrollment Tracking** - Assign employees to specific training programs and track progress
-📜 **Certification Management** - Record issued certifications and track expirations
-📈 **Reporting & Compliance** - Generate detailed compliance metrics and export reports in PDF and Excel formats
+## ✨ Features
+📊 **Dashboard & Analytics** - Comprehensive overview with key metrics, employee status tracking, certification expiry alerts, training progress  
+👥 **Employee Management** - Create and manage employees in the company  
+🎓 **Training Management** - Create and manage training courses  
+📋 **Enrollment Tracking** - Assign employees to specific training programs and track progress  
+📜 **Certification Management** - Record issued certifications and track expirations  
+📈 **Reporting & Compliance** - Generate detailed compliance metrics and export reports in PDF and Excel formats  
 🔐 **Security & Authentication** - Secure token-based authentication
+
 
 ## 🌐 Live Deployment
 Live Website: https://training-certification.netlify.app/
 Demo Credentials: Email: skillflow@gmail.com | Password: skillflow1
 
-## 🛠️ Tech Stack
 
+## 🛠️ Tech Stack
 ### Backend
 - **Framework**: FastAPI
 - **Language**: Python
