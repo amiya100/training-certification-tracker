@@ -85,9 +85,3 @@ The system uses MySQL with the following main tables:
 - `trainings` - Training program details
 - `enrollments` - Training enrollment records
 - `certifications` - Certification records
-
-
-
----
-
-**Note**: This is a production-ready system with proper authentication, error handling, and security measures. Always use strong passwords and keep your secret keys secure in production environments.
