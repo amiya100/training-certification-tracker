@@ -51,10 +51,11 @@ def update_department(
     if not dept:
         raise HTTPException(status_code=404, detail="Department not found")
     
-    # Check if new name conflicts with existing
-    if dept_update.name and dept_update.name != dept.name:
-        existing = crud_department.get_by_name(db, dept_update.name)
-        if existing:
+    # Check if new name conflicts with existing department (case-insensitive)
+    if dept_update.name and dept_update.name.lower() != dept.name.lower():
+        # Check if any OTHER department already has this name (case-insensitive)
+        existing = crud_department.get_by_name_case_insensitive(db, dept_update.name)
+        if existing and existing.id != dept_id:
             raise HTTPException(status_code=400, detail="Department name already exists")
     
     return crud_department.update(db, db_obj=dept, obj_in=dept_update)
