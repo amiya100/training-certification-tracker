@@ -1,10 +1,12 @@
-# tests/test_enrollments.py
+# tests/test_enrollments.py - UPDATED WITH AUTHENTICATION
 import sys
 import os
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from datetime import datetime, timedelta
+from jose import jwt
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -30,6 +32,20 @@ def override_get_db():
 app.dependency_overrides[get_db] = override_get_db
 
 client = TestClient(app)
+
+# Authentication constants
+SECRET_KEY = "supersecretkey"
+ALGORITHM = "HS256"
+USER_EMAIL = "skillflow@gmail.com"
+
+def get_auth_headers():
+    """Generate authentication headers with a valid JWT token"""
+    # Create a token (same logic as in your auth.py)
+    expire = datetime.utcnow() + timedelta(minutes=60)
+    payload = {"sub": USER_EMAIL, "exp": expire}
+    token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    
+    return {"Authorization": f"Bearer {token}"}
 
 # Test data
 TEST_EMPLOYEE_DATA = {
@@ -80,8 +96,11 @@ def cleanup_database():
         db.close()
 
 def setup_test_data():
-    """Setup test employee and training"""
+    """Setup test employee and training with authentication"""
     cleanup_database()
+    
+    # Get auth headers
+    headers = get_auth_headers()
     
     # Get the default department
     db = TestingSessionLocal()
@@ -96,15 +115,15 @@ def setup_test_data():
     employee_data["department_id"] = department.id
     
     # Create test employee
-    emp_response = client.post("/employees/", json=employee_data)
+    emp_response = client.post("/employees/", json=employee_data, headers=headers)
     if emp_response.status_code != 201:
         raise Exception(f"Failed to create test employee: {emp_response.text}")
     employee = emp_response.json()
     
     # Create test training
-    train_response = client.post("/trainings/", json=TEST_TRAINING_DATA)
+    train_response = client.post("/trainings/", json=TEST_TRAINING_DATA, headers=headers)
     if train_response.status_code != 201:
-        client.delete(f"/employees/{employee['id']}")
+        client.delete(f"/employees/{employee['id']}", headers=headers)
         raise Exception(f"Failed to create test training: {train_response.text}")
     training = train_response.json()
     
@@ -117,12 +136,34 @@ def setup_test():
     yield
     # cleanup_database()  # Cleanup handled in setup_test_data
 
+def test_unauthorized_access():
+    """Test that enrollment endpoints return 401 without authentication"""
+    print("Test 1: Testing unauthorized access to enrollment endpoints...")
+    
+    # Test create endpoint without auth
+    enrollment_data = {
+        "employee_id": 1,
+        "training_id": 1,
+        "status": "enrolled",
+        "progress": 0
+    }
+    
+    response = client.post("/enrollments/", json=enrollment_data)
+    assert response.status_code == 401 or response.status_code == 403
+    print("✅ Unauthorized access to create endpoint correctly blocked")
+    
+    # Test get list without auth
+    response = client.get("/enrollments/")
+    assert response.status_code == 401 or response.status_code == 403
+    print("✅ Unauthorized access to list endpoint correctly blocked")
+
 def test_create_enrollment():
-    """Test POST /enrollments/"""
-    print("Test 1: Creating enrollment...")
+    """Test POST /enrollments/ with authentication"""
+    print("\nTest 2: Creating enrollment with authentication...")
     
     try:
         employee, training = setup_test_data()
+        headers = get_auth_headers()
         
         enrollment_data = {
             "employee_id": employee["id"],
@@ -131,7 +172,7 @@ def test_create_enrollment():
             "progress": 0
         }
         
-        response = client.post("/enrollments/", json=enrollment_data)
+        response = client.post("/enrollments/", json=enrollment_data, headers=headers)
         
         assert response.status_code == 201
         data = response.json()
@@ -142,18 +183,19 @@ def test_create_enrollment():
         print("✅ Created enrollment successfully")
         
         # Clean up enrollment
-        client.delete(f"/enrollments/{data['id']}")
+        client.delete(f"/enrollments/{data['id']}", headers=headers)
         
     except Exception as e:
         print(f"❌ Error: {e}")
         raise
 
 def test_create_duplicate_enrollment():
-    """Test duplicate enrollment prevention"""
-    print("\nTest 2: Testing duplicate enrollment prevention...")
+    """Test duplicate enrollment prevention with authentication"""
+    print("\nTest 3: Testing duplicate enrollment prevention with authentication...")
     
     try:
         employee, training = setup_test_data()
+        headers = get_auth_headers()
         
         enrollment_data = {
             "employee_id": employee["id"],
@@ -163,30 +205,31 @@ def test_create_duplicate_enrollment():
         }
         
         # Create first enrollment
-        response1 = client.post("/enrollments/", json=enrollment_data)
+        response1 = client.post("/enrollments/", json=enrollment_data, headers=headers)
         assert response1.status_code == 201
         enrollment_id = response1.json()["id"]
         
         # Try to create duplicate
-        response2 = client.post("/enrollments/", json=enrollment_data)
+        response2 = client.post("/enrollments/", json=enrollment_data, headers=headers)
         assert response2.status_code == 400
         assert "already enrolled" in response2.json()["detail"].lower()
         print("✅ Correctly prevented duplicate enrollment")
         
         # Clean up
-        client.delete(f"/enrollments/{enrollment_id}")
+        client.delete(f"/enrollments/{enrollment_id}", headers=headers)
         
     except Exception as e:
         print(f"❌ Error: {e}")
         raise
 
 def test_get_enrollments():
-    """Test GET /enrollments/"""
-    print("\nTest 3: Getting enrollments list...")
+    """Test GET /enrollments/ with authentication"""
+    print("\nTest 4: Getting enrollments list with authentication...")
     
     try:
         # First, create some test data
         employee, training = setup_test_data()
+        headers = get_auth_headers()
         
         enrollment_data = {
             "employee_id": employee["id"],
@@ -195,12 +238,12 @@ def test_get_enrollments():
             "progress": 0
         }
         
-        create_response = client.post("/enrollments/", json=enrollment_data)
+        create_response = client.post("/enrollments/", json=enrollment_data, headers=headers)
         assert create_response.status_code == 201
         enrollment_id = create_response.json()["id"]
         
         # Now test getting enrollments
-        response = client.get("/enrollments/")
+        response = client.get("/enrollments/", headers=headers)
         assert response.status_code == 200
         
         data = response.json()
@@ -211,19 +254,19 @@ def test_get_enrollments():
         print(f"✅ Got {data['total']} enrollments")
         
         # Clean up
-        client.delete(f"/enrollments/{enrollment_id}")
+        client.delete(f"/enrollments/{enrollment_id}", headers=headers)
         
     except Exception as e:
         print(f"❌ Error: {e}")
         raise
 
-
 def test_update_enrollment():
-    """Test PUT /enrollments/{id}"""
-    print("\nTest 4: Updating enrollment...")
+    """Test PUT /enrollments/{id} with authentication"""
+    print("\nTest 5: Updating enrollment with authentication...")
     
     try:
         employee, training = setup_test_data()
+        headers = get_auth_headers()
         
         # Create enrollment
         enrollment_data = {
@@ -233,7 +276,7 @@ def test_update_enrollment():
             "progress": 0
         }
         
-        create_response = client.post("/enrollments/", json=enrollment_data)
+        create_response = client.post("/enrollments/", json=enrollment_data, headers=headers)
         assert create_response.status_code == 201
         enrollment_id = create_response.json()["id"]
         
@@ -243,7 +286,7 @@ def test_update_enrollment():
             "progress": 50
         }
         
-        update_response = client.put(f"/enrollments/{enrollment_id}", json=update_data)
+        update_response = client.put(f"/enrollments/{enrollment_id}", json=update_data, headers=headers)
         assert update_response.status_code == 200
         
         data = update_response.json()
@@ -252,18 +295,19 @@ def test_update_enrollment():
         print("✅ Updated enrollment successfully")
         
         # Clean up
-        client.delete(f"/enrollments/{enrollment_id}")
+        client.delete(f"/enrollments/{enrollment_id}", headers=headers)
         
     except Exception as e:
         print(f"❌ Error: {e}")
         raise
 
 def test_update_enrollment_progress():
-    """Test PATCH /enrollments/{id}/progress"""
-    print("\nTest 5: Updating enrollment progress...")
+    """Test PATCH /enrollments/{id}/progress with authentication"""
+    print("\nTest 6: Updating enrollment progress with authentication...")
     
     try:
         employee, training = setup_test_data()
+        headers = get_auth_headers()
         
         # Create enrollment
         enrollment_data = {
@@ -273,12 +317,12 @@ def test_update_enrollment_progress():
             "progress": 0
         }
         
-        create_response = client.post("/enrollments/", json=enrollment_data)
+        create_response = client.post("/enrollments/", json=enrollment_data, headers=headers)
         assert create_response.status_code == 201
         enrollment_id = create_response.json()["id"]
         
         # Update progress
-        progress_response = client.patch(f"/enrollments/{enrollment_id}/progress?progress=75")
+        progress_response = client.patch(f"/enrollments/{enrollment_id}/progress?progress=75", headers=headers)
         assert progress_response.status_code == 200
         
         data = progress_response.json()
@@ -287,18 +331,19 @@ def test_update_enrollment_progress():
         print("✅ Updated progress successfully")
         
         # Clean up
-        client.delete(f"/enrollments/{enrollment_id}")
+        client.delete(f"/enrollments/{enrollment_id}", headers=headers)
         
     except Exception as e:
         print(f"❌ Error: {e}")
         raise
 
 def test_complete_enrollment():
-    """Test POST /enrollments/{id}/complete"""
-    print("\nTest 6: Completing enrollment...")
+    """Test POST /enrollments/{id}/complete with authentication"""
+    print("\nTest 7: Completing enrollment with authentication...")
     
     try:
         employee, training = setup_test_data()
+        headers = get_auth_headers()
         
         # Create enrollment
         enrollment_data = {
@@ -308,12 +353,12 @@ def test_complete_enrollment():
             "progress": 0
         }
         
-        create_response = client.post("/enrollments/", json=enrollment_data)
+        create_response = client.post("/enrollments/", json=enrollment_data, headers=headers)
         assert create_response.status_code == 201
         enrollment_id = create_response.json()["id"]
         
         # Complete enrollment
-        complete_response = client.post(f"/enrollments/{enrollment_id}/complete")
+        complete_response = client.post(f"/enrollments/{enrollment_id}/complete", headers=headers)
         assert complete_response.status_code == 200
         
         data = complete_response.json()
@@ -323,7 +368,7 @@ def test_complete_enrollment():
         print("✅ Completed enrollment successfully")
         
         # Check if certificate was created
-        certs_response = client.get("/certifications/")
+        certs_response = client.get("/certifications/", headers=headers)
         if certs_response.status_code == 200:
             certificates = certs_response.json().get("certifications", [])
             cert_created = any(cert.get("enrollment_id") == enrollment_id for cert in certificates)
@@ -332,23 +377,24 @@ def test_complete_enrollment():
                 # Clean up certificate
                 for cert in certificates:
                     if cert.get("enrollment_id") == enrollment_id:
-                        client.delete(f"/certifications/{cert['id']}")
+                        client.delete(f"/certifications/{cert['id']}", headers=headers)
             else:
                 print("⚠️  Certificate not found (might be a different endpoint or implementation)")
         
         # Clean up enrollment
-        client.delete(f"/enrollments/{enrollment_id}")
+        client.delete(f"/enrollments/{enrollment_id}", headers=headers)
         
     except Exception as e:
         print(f"❌ Error: {e}")
         raise
 
 def test_auto_complete_on_100_percent():
-    """Test auto-completion when progress reaches 100%"""
-    print("\nTest 7: Auto-completion on 100% progress...")
+    """Test auto-completion when progress reaches 100% with authentication"""
+    print("\nTest 8: Auto-completion on 100% progress with authentication...")
     
     try:
         employee, training = setup_test_data()
+        headers = get_auth_headers()
         
         # Create enrollment
         enrollment_data = {
@@ -358,12 +404,12 @@ def test_auto_complete_on_100_percent():
             "progress": 50
         }
         
-        create_response = client.post("/enrollments/", json=enrollment_data)
+        create_response = client.post("/enrollments/", json=enrollment_data, headers=headers)
         assert create_response.status_code == 201
         enrollment_id = create_response.json()["id"]
         
         # Update progress to 100
-        update_response = client.put(f"/enrollments/{enrollment_id}", json={"progress": 100})
+        update_response = client.put(f"/enrollments/{enrollment_id}", json={"progress": 100}, headers=headers)
         assert update_response.status_code == 200
         
         data = update_response.json()
@@ -373,26 +419,27 @@ def test_auto_complete_on_100_percent():
         print("✅ Auto-completed when progress reached 100%")
         
         # Clean up any certificates
-        certs_response = client.get("/certifications/")
+        certs_response = client.get("/certifications/", headers=headers)
         if certs_response.status_code == 200:
             certificates = certs_response.json().get("certifications", [])
             for cert in certificates:
                 if cert.get("enrollment_id") == enrollment_id:
-                    client.delete(f"/certifications/{cert['id']}")
+                    client.delete(f"/certifications/{cert['id']}", headers=headers)
         
         # Clean up enrollment
-        client.delete(f"/enrollments/{enrollment_id}")
+        client.delete(f"/enrollments/{enrollment_id}", headers=headers)
         
     except Exception as e:
         print(f"❌ Error: {e}")
         raise
 
 def test_delete_enrollment():
-    """Test DELETE /enrollments/{id}"""
-    print("\nTest 8: Deleting enrollment...")
+    """Test DELETE /enrollments/{id} with authentication"""
+    print("\nTest 9: Deleting enrollment with authentication...")
     
     try:
         employee, training = setup_test_data()
+        headers = get_auth_headers()
         
         # Create enrollment
         enrollment_data = {
@@ -402,17 +449,17 @@ def test_delete_enrollment():
             "progress": 0
         }
         
-        create_response = client.post("/enrollments/", json=enrollment_data)
+        create_response = client.post("/enrollments/", json=enrollment_data, headers=headers)
         assert create_response.status_code == 201
         enrollment_id = create_response.json()["id"]
         
         # Delete enrollment
-        delete_response = client.delete(f"/enrollments/{enrollment_id}")
+        delete_response = client.delete(f"/enrollments/{enrollment_id}", headers=headers)
         assert delete_response.status_code == 204
         print("✅ Deleted enrollment successfully")
         
         # Verify it's deleted by trying to get it
-        progress_response = client.patch(f"/enrollments/{enrollment_id}/progress?progress=75")
+        progress_response = client.patch(f"/enrollments/{enrollment_id}/progress?progress=75", headers=headers)
         assert progress_response.status_code == 404
         
     except Exception as e:
@@ -420,12 +467,13 @@ def test_delete_enrollment():
         raise
 
 def test_enrollment_filters():
-    """Test enrollment filters"""
-    print("\nTest 9: Testing enrollment filters...")
+    """Test enrollment filters with authentication"""
+    print("\nTest 10: Testing enrollment filters with authentication...")
     
     try:
         # Create test data
         employee, training = setup_test_data()
+        headers = get_auth_headers()
         
         enrollment_data = {
             "employee_id": employee["id"],
@@ -434,64 +482,67 @@ def test_enrollment_filters():
             "progress": 25
         }
         
-        create_response = client.post("/enrollments/", json=enrollment_data)
+        create_response = client.post("/enrollments/", json=enrollment_data, headers=headers)
         assert create_response.status_code == 201
         enrollment_id = create_response.json()["id"]
         
         # Test with status filter
-        response = client.get("/enrollments/?status=enrolled")
+        response = client.get("/enrollments/?status=enrolled", headers=headers)
         assert response.status_code == 200
         data = response.json()
         print(f"✅ Filter by status works (got {len(data['enrollments'])} enrollments)")
         
         # Test with employee_id filter
-        response = client.get(f"/enrollments/?employee_id={employee['id']}")
+        response = client.get(f"/enrollments/?employee_id={employee['id']}", headers=headers)
         assert response.status_code == 200
         data = response.json()
         if data["enrollments"]:
             print(f"✅ Filter by employee_id works (got {len(data['enrollments'])} enrollments)")
         
         # Test with progress filter
-        response = client.get("/enrollments/?min_progress=20&max_progress=30")
+        response = client.get("/enrollments/?min_progress=20&max_progress=30", headers=headers)
         assert response.status_code == 200
         data = response.json()
         if data["enrollments"]:
             print(f"✅ Filter by progress works (got {len(data['enrollments'])} enrollments)")
         
         # Clean up
-        client.delete(f"/enrollments/{enrollment_id}")
+        client.delete(f"/enrollments/{enrollment_id}", headers=headers)
         
     except Exception as e:
         print(f"⚠️  Filter test note: {e}")
         # Don't raise, filters might not be fully implemented
 
 def test_enrollment_update_not_found():
-    """Test 404 when updating non-existent enrollment"""
-    print("\nTest 10a: Testing update on non-existent enrollment...")
+    """Test 404 when updating non-existent enrollment with authentication"""
+    print("\nTest 11a: Testing update on non-existent enrollment with authentication...")
     
+    headers = get_auth_headers()
     update_data = {
         "status": "completed",
         "progress": 100
     }
     
-    response = client.put("/enrollments/999999", json=update_data)
+    response = client.put("/enrollments/999999", json=update_data, headers=headers)
     assert response.status_code == 404
     print("✅ Correctly returned 404 when updating non-existent enrollment")
 
 def test_enrollment_delete_not_found():
-    """Test 404 when deleting non-existent enrollment"""
-    print("\nTest 10b: Testing delete on non-existent enrollment...")
+    """Test 404 when deleting non-existent enrollment with authentication"""
+    print("\nTest 11b: Testing delete on non-existent enrollment with authentication...")
     
-    response = client.delete("/enrollments/999999")
+    headers = get_auth_headers()
+    response = client.delete("/enrollments/999999", headers=headers)
     assert response.status_code == 404
     print("✅ Correctly returned 404 when deleting non-existent enrollment")
 
 def test_enrollment_invalid_progress():
-    """Test validation for invalid progress values"""
-    print("\nTest 11: Testing invalid progress values...")
+    """Test validation for invalid progress values with authentication"""
+    print("\nTest 12: Testing invalid progress values with authentication...")
     
     try:
         employee, training = setup_test_data()
+        headers = get_auth_headers()
         
         # Test with progress > 100
         enrollment_data = {
@@ -501,25 +552,52 @@ def test_enrollment_invalid_progress():
             "progress": 150  # Invalid
         }
         
-        response = client.post("/enrollments/", json=enrollment_data)
+        response = client.post("/enrollments/", json=enrollment_data, headers=headers)
         # Might return 422 or might clamp the value - depends on implementation
         print(f"✅ Progress validation test completed (status: {response.status_code})")
         
         # Clean up if created
         if response.status_code == 201:
             enrollment_id = response.json()["id"]
-            client.delete(f"/enrollments/{enrollment_id}")
+            client.delete(f"/enrollments/{enrollment_id}", headers=headers)
         
     except Exception as e:
         print(f"⚠️  Progress validation note: {e}")
 
+def test_invalid_token():
+    """Test enrollment endpoints with invalid JWT token"""
+    print("\nTest 13: Testing enrollment endpoints with invalid token...")
+    
+    # Test with invalid token
+    headers = {"Authorization": "Bearer invalid_token"}
+    enrollment_data = {
+        "employee_id": 1,
+        "training_id": 1,
+        "status": "enrolled",
+        "progress": 0
+    }
+    
+    response = client.post("/enrollments/", json=enrollment_data, headers=headers)
+    assert response.status_code == 401 or response.status_code == 403
+    print("✅ Invalid token correctly rejected for create endpoint")
+    
+    # Test with expired token
+    expire = datetime.utcnow() - timedelta(minutes=1)  # Expired 1 minute ago
+    payload = {"sub": USER_EMAIL, "exp": expire}
+    expired_token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    headers = {"Authorization": f"Bearer {expired_token}"}
+    response = client.get("/enrollments/", headers=headers)
+    assert response.status_code == 401 or response.status_code == 403
+    print("✅ Expired token correctly rejected for list endpoint")
+
 # Run tests
 if __name__ == "__main__":
     print("=" * 60)
-    print("Running Enrollment API Tests")
+    print("Running Enrollment API Tests (with Authentication)")
     print("=" * 60)
     
     tests = [
+        ("Unauthorized Access", test_unauthorized_access),
         ("Create Enrollment", test_create_enrollment),
         ("Duplicate Prevention", test_create_duplicate_enrollment),
         ("Get Enrollments", test_get_enrollments),
@@ -531,6 +609,8 @@ if __name__ == "__main__":
         ("Filters", test_enrollment_filters),
         ("Update Not Found", test_enrollment_update_not_found),
         ("Delete Not Found", test_enrollment_delete_not_found),
+        ("Invalid Progress", test_enrollment_invalid_progress),
+        ("Invalid Token", test_invalid_token),
     ]
     
     passed = 0

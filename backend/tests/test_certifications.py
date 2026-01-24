@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timedelta
+from jose import jwt
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -32,6 +33,11 @@ app.dependency_overrides[get_db] = override_get_db
 
 client = TestClient(app)
 
+# Authentication constants
+SECRET_KEY = "supersecretkey"
+ALGORITHM = "HS256"
+USER_EMAIL = "skillflow@gmail.com"
+
 @pytest.fixture(autouse=True)
 def setup_test():
     """Setup and teardown for each test"""
@@ -39,6 +45,15 @@ def setup_test():
     cleanup_database()
     yield
     # cleanup_database()
+
+def get_auth_headers():
+    """Generate authentication headers with a valid JWT token"""
+    # Create a token (same logic as in your auth.py)
+    expire = datetime.utcnow() + timedelta(minutes=60)
+    payload = {"sub": USER_EMAIL, "exp": expire}
+    token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    
+    return {"Authorization": f"Bearer {token}"}
 
 def cleanup_database():
     """Clean up test database"""
@@ -149,16 +164,28 @@ def create_test_certification_directly():
     finally:
         db.close()
 
+def test_unauthorized_access():
+    """Test that endpoints return 401 without authentication"""
+    print("Test 1: Testing unauthorized access...")
+    
+    # Test without auth headers
+    response = client.get("/certifications/")
+    assert response.status_code == 401 or response.status_code == 403
+    print("✅ Unauthorized access correctly blocked")
+
 def test_get_certifications():
-    """Test GET /certifications/"""
-    print("Test 1: Getting certifications list...")
+    """Test GET /certifications/ with authentication"""
+    print("\nTest 2: Getting certifications list with auth...")
     
     try:
         # Create test data directly in DB
         cert_data = create_test_certification_directly()
         
-        # Test the endpoint
-        response = client.get("/certifications/")
+        # Get auth headers
+        headers = get_auth_headers()
+        
+        # Test the endpoint with auth
+        response = client.get("/certifications/", headers=headers)
         assert response.status_code == 200
         
         data = response.json()
@@ -175,15 +202,18 @@ def test_get_certifications():
         raise
 
 def test_get_single_certification():
-    """Test GET /certifications/{id}"""
-    print("\nTest 2: Getting single certification...")
+    """Test GET /certifications/{id} with authentication"""
+    print("\nTest 3: Getting single certification with auth...")
     
     try:
         # Create test data directly in DB
         cert_data = create_test_certification_directly()
         
-        # Test the endpoint
-        response = client.get(f"/certifications/{cert_data['id']}")
+        # Get auth headers
+        headers = get_auth_headers()
+        
+        # Test the endpoint with auth
+        response = client.get(f"/certifications/{cert_data['id']}", headers=headers)
         assert response.status_code == 200
         
         data = response.json()
@@ -201,24 +231,28 @@ def test_get_single_certification():
         raise
 
 def test_certification_not_found():
-    """Test 404 for non-existent certification"""
-    print("\nTest 3: Testing non-existent certification...")
+    """Test 404 for non-existent certification with auth"""
+    print("\nTest 4: Testing non-existent certification with auth...")
     
-    response = client.get("/certifications/999999")
+    headers = get_auth_headers()
+    response = client.get("/certifications/999999", headers=headers)
     assert response.status_code == 404
     assert "Certification not found" in response.json()["detail"]
     print("✅ Correctly returned 404 for non-existent certification")
 
 def test_certification_filters_status():
-    """Test certification filter by status"""
-    print("\nTest 4: Testing certification filter by status...")
+    """Test certification filter by status with auth"""
+    print("\nTest 5: Testing certification filter by status with auth...")
     
     try:
         # Create test data directly in DB
         cert_data = create_test_certification_directly()
         
+        # Get auth headers
+        headers = get_auth_headers()
+        
         # Test filter by status
-        response = client.get("/certifications/?status=active")
+        response = client.get("/certifications/?status=active", headers=headers)
         assert response.status_code == 200
         
         data = response.json()
@@ -235,15 +269,18 @@ def test_certification_filters_status():
         # Don't raise, the filter might work differently
 
 def test_certification_filters_employee_id():
-    """Test certification filter by employee_id"""
-    print("\nTest 5: Testing certification filter by employee_id...")
+    """Test certification filter by employee_id with auth"""
+    print("\nTest 6: Testing certification filter by employee_id with auth...")
     
     try:
         # Create test data directly in DB
         cert_data = create_test_certification_directly()
         
+        # Get auth headers
+        headers = get_auth_headers()
+        
         # Test filter by employee_id
-        response = client.get(f"/certifications/?employee_id={cert_data['employee_id']}")
+        response = client.get(f"/certifications/?employee_id={cert_data['employee_id']}", headers=headers)
         assert response.status_code == 200
         
         data = response.json()
@@ -260,8 +297,8 @@ def test_certification_filters_employee_id():
         # Don't raise, the filter might work differently
 
 def test_certification_pagination():
-    """Test certification pagination (skip and limit)"""
-    print("\nTest 6: Testing certification pagination...")
+    """Test certification pagination (skip and limit) with auth"""
+    print("\nTest 7: Testing certification pagination with auth...")
     
     try:
         # Create multiple certifications
@@ -333,8 +370,11 @@ def test_certification_pagination():
             
             db.close()
         
+        # Get auth headers
+        headers = get_auth_headers()
+        
         # Test pagination with skip=0, limit=2
-        response = client.get("/certifications/?skip=0&limit=2")
+        response = client.get("/certifications/?skip=0&limit=2", headers=headers)
         assert response.status_code == 200
         data = response.json()
         
@@ -344,7 +384,7 @@ def test_certification_pagination():
         print(f"✅ Pagination works: got {len(data['certifications'])} certifications with limit=2")
         
         # Test pagination with skip=2, limit=2
-        response = client.get("/certifications/?skip=2&limit=2")
+        response = client.get("/certifications/?skip=2&limit=2", headers=headers)
         assert response.status_code == 200
         data = response.json()
         
@@ -358,13 +398,16 @@ def test_certification_pagination():
         # Don't raise, pagination might not be fully implemented
 
 def test_certification_empty_list():
-    """Test GET /certifications/ when no certifications exist"""
-    print("\nTest 7: Testing empty certifications list...")
+    """Test GET /certifications/ when no certifications exist with auth"""
+    print("\nTest 8: Testing empty certifications list with auth...")
     
     # Make sure database is clean
     cleanup_database()
     
-    response = client.get("/certifications/")
+    # Get auth headers
+    headers = get_auth_headers()
+    
+    response = client.get("/certifications/", headers=headers)
     assert response.status_code == 200
     
     data = response.json()
@@ -373,16 +416,19 @@ def test_certification_empty_list():
     print("✅ Empty certifications list handled correctly")
 
 def test_certification_invalid_filters():
-    """Test certification endpoint with invalid filter values"""
-    print("\nTest 8: Testing invalid filter values...")
+    """Test certification endpoint with invalid filter values with auth"""
+    print("\nTest 9: Testing invalid filter values with auth...")
+    
+    # Get auth headers
+    headers = get_auth_headers()
     
     # Test with invalid status (should still return 200, might return empty list)
-    response = client.get("/certifications/?status=invalid_status")
+    response = client.get("/certifications/?status=invalid_status", headers=headers)
     assert response.status_code == 200
     print("✅ Invalid status filter handled gracefully")
     
     # Test with invalid employee_id (non-numeric)
-    response = client.get("/certifications/?employee_id=abc")
+    response = client.get("/certifications/?employee_id=abc", headers=headers)
     # Should return 422 validation error or 200 with empty results
     if response.status_code == 422:
         print("✅ Invalid employee_id correctly rejected (422)")
@@ -392,15 +438,18 @@ def test_certification_invalid_filters():
         print(f"⚠️  Unexpected status for invalid employee_id: {response.status_code}")
 
 def test_certification_default_pagination():
-    """Test that default pagination values work"""
-    print("\nTest 9: Testing default pagination values...")
+    """Test that default pagination values work with auth"""
+    print("\nTest 10: Testing default pagination values with auth...")
     
     try:
         # Create at least one certification
         create_test_certification_directly()
         
+        # Get auth headers
+        headers = get_auth_headers()
+        
         # Test without any pagination parameters (should use defaults)
-        response = client.get("/certifications/")
+        response = client.get("/certifications/", headers=headers)
         assert response.status_code == 200
         
         data = response.json()
@@ -412,14 +461,17 @@ def test_certification_default_pagination():
         print(f"⚠️  Default pagination test note: {e}")
 
 def test_certification_fields():
-    """Test that certification response has expected fields"""
-    print("\nTest 10: Testing certification response fields...")
+    """Test that certification response has expected fields with auth"""
+    print("\nTest 11: Testing certification response fields with auth...")
     
     try:
         # Create test data
         cert_data = create_test_certification_directly()
         
-        response = client.get(f"/certifications/{cert_data['id']}")
+        # Get auth headers
+        headers = get_auth_headers()
+        
+        response = client.get(f"/certifications/{cert_data['id']}", headers=headers)
         assert response.status_code == 200
         
         data = response.json()
@@ -445,13 +497,33 @@ def test_certification_fields():
         print(f"❌ Error: {e}")
         raise
 
+def test_invalid_token():
+    """Test with invalid JWT token"""
+    print("\nTest 12: Testing with invalid token...")
+    
+    # Test with invalid token
+    headers = {"Authorization": "Bearer invalid_token"}
+    response = client.get("/certifications/", headers=headers)
+    assert response.status_code == 401 or response.status_code == 403
+    print("✅ Invalid token correctly rejected")
+    
+    # Test with expired token
+    expire = datetime.utcnow() - timedelta(minutes=1)  # Expired 1 minute ago
+    payload = {"sub": USER_EMAIL, "exp": expire}
+    expired_token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    headers = {"Authorization": f"Bearer {expired_token}"}
+    response = client.get("/certifications/", headers=headers)
+    assert response.status_code == 401 or response.status_code == 403
+    print("✅ Expired token correctly rejected")
+
 # Run tests with pytest
 if __name__ == "__main__":
     print("=" * 60)
-    print("Running Certification API Tests")
+    print("Running Certification API Tests (with Authentication)")
     print("=" * 60)
     
     tests = [
+        ("Unauthorized Access", test_unauthorized_access),
         ("Get Certifications List", test_get_certifications),
         ("Get Single Certification", test_get_single_certification),
         ("Certification Not Found", test_certification_not_found),
@@ -462,6 +534,7 @@ if __name__ == "__main__":
         ("Invalid Filters", test_certification_invalid_filters),
         ("Default Pagination", test_certification_default_pagination),
         ("Response Fields", test_certification_fields),
+        ("Invalid Token", test_invalid_token),
     ]
     
     passed = 0

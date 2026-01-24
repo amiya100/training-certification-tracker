@@ -1,4 +1,4 @@
-# tests/test_compliance.py - FIXED VERSION
+# tests/test_compliance.py - FIXED VERSION WITH AUTH
 import sys
 import os
 import pytest
@@ -7,6 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, date, timedelta
 import json
+from jose import jwt
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -33,6 +34,11 @@ app.dependency_overrides[get_db] = override_get_db
 
 client = TestClient(app)
 
+# Authentication constants
+SECRET_KEY = "supersecretkey"
+ALGORITHM = "HS256"
+USER_EMAIL = "skillflow@gmail.com"
+
 @pytest.fixture(autouse=True)
 def setup_test():
     """Setup and teardown for each test"""
@@ -40,6 +46,15 @@ def setup_test():
     cleanup_database()
     yield
     # cleanup_database()
+
+def get_auth_headers():
+    """Generate authentication headers with a valid JWT token"""
+    # Create a token (same logic as in your auth.py)
+    expire = datetime.utcnow() + timedelta(minutes=60)
+    payload = {"sub": USER_EMAIL, "exp": expire}
+    token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    
+    return {"Authorization": f"Bearer {token}"}
 
 def cleanup_database():
     """Clean up test database"""
@@ -263,13 +278,38 @@ def create_test_compliance_data():
     finally:
         db.close()
 
+def test_unauthorized_access_compliance():
+    """Test that compliance endpoints return 401 without authentication"""
+    print("Test 1: Testing unauthorized access to compliance endpoints...")
+    
+    # Test report endpoint without auth
+    filters = {
+        "department": "all",
+        "compliance_threshold": 80,
+        "include_expired": True,
+        "include_expiring_soon": True,
+        "certification_type": "all"
+    }
+    
+    response = client.post("/api/compliance/report", json=filters)
+    assert response.status_code == 401 or response.status_code == 403
+    print("✅ Unauthorized access to report endpoint correctly blocked")
+    
+    # Test export endpoint without auth
+    response = client.post("/api/compliance/export/excel", json=filters)
+    assert response.status_code == 401 or response.status_code == 403
+    print("✅ Unauthorized access to export endpoint correctly blocked")
+
 def test_generate_compliance_report_all():
     """Test POST /api/compliance/report - All departments"""
-    print("Test 1: Generating compliance report for all departments...")
+    print("\nTest 2: Generating compliance report for all departments...")
     
     try:
         # Create test data
         create_test_compliance_data()
+        
+        # Get auth headers
+        headers = get_auth_headers()
         
         # Prepare filters
         filters = {
@@ -280,7 +320,7 @@ def test_generate_compliance_report_all():
             "certification_type": "all"
         }
         
-        response = client.post("/api/compliance/report", json=filters)
+        response = client.post("/api/compliance/report", json=filters, headers=headers)
         assert response.status_code == 200
         
         data = response.json()
@@ -336,11 +376,14 @@ def test_generate_compliance_report_all():
 
 def test_generate_compliance_report_by_department():
     """Test POST /api/compliance/report - Filter by department"""
-    print("\nTest 2: Generating compliance report for specific department...")
+    print("\nTest 3: Generating compliance report for specific department...")
     
     try:
         # Create test data
         create_test_compliance_data()
+        
+        # Get auth headers
+        headers = get_auth_headers()
         
         # Prepare filters for Engineering department
         filters = {
@@ -351,7 +394,7 @@ def test_generate_compliance_report_by_department():
             "certification_type": "all"
         }
         
-        response = client.post("/api/compliance/report", json=filters)
+        response = client.post("/api/compliance/report", json=filters, headers=headers)
         assert response.status_code == 200
         
         data = response.json()
@@ -379,11 +422,14 @@ def test_generate_compliance_report_by_department():
 
 def test_generate_compliance_report_with_date_range():
     """Test POST /api/compliance/report - With date range"""
-    print("\nTest 3: Generating compliance report with date range...")
+    print("\nTest 4: Generating compliance report with date range...")
     
     try:
         # Create test data
         create_test_compliance_data()
+        
+        # Get auth headers
+        headers = get_auth_headers()
         
         # Prepare filters with date range
         filters = {
@@ -398,7 +444,7 @@ def test_generate_compliance_report_with_date_range():
             "certification_type": "all"
         }
         
-        response = client.post("/api/compliance/report", json=filters)
+        response = client.post("/api/compliance/report", json=filters, headers=headers)
         assert response.status_code == 200
         
         data = response.json()
@@ -419,11 +465,14 @@ def test_generate_compliance_report_with_date_range():
 
 def test_generate_compliance_report_missing_certifications():
     """Test POST /api/compliance/report - Check missing certifications"""
-    print("\nTest 4: Checking for missing certifications in report...")
+    print("\nTest 5: Checking for missing certifications in report...")
     
     try:
         # Create test data
         create_test_compliance_data()
+        
+        # Get auth headers
+        headers = get_auth_headers()
         
         # Prepare filters
         filters = {
@@ -434,7 +483,7 @@ def test_generate_compliance_report_missing_certifications():
             "certification_type": "all"
         }
         
-        response = client.post("/api/compliance/report", json=filters)
+        response = client.post("/api/compliance/report", json=filters, headers=headers)
         assert response.status_code == 200
         
         data = response.json()
@@ -459,11 +508,14 @@ def test_generate_compliance_report_missing_certifications():
 
 def test_generate_compliance_report_upcoming_expirations():
     """Test POST /api/compliance/report - Check upcoming expirations"""
-    print("\nTest 5: Checking for upcoming expirations in report...")
+    print("\nTest 6: Checking for upcoming expirations in report...")
     
     try:
         # Create test data
         create_test_compliance_data()
+        
+        # Get auth headers
+        headers = get_auth_headers()
         
         # Prepare filters
         filters = {
@@ -474,7 +526,7 @@ def test_generate_compliance_report_upcoming_expirations():
             "certification_type": "all"
         }
         
-        response = client.post("/api/compliance/report", json=filters)
+        response = client.post("/api/compliance/report", json=filters, headers=headers)
         assert response.status_code == 200
         
         data = response.json()
@@ -498,11 +550,14 @@ def test_generate_compliance_report_upcoming_expirations():
 
 def test_export_compliance_report_excel():
     """Test POST /api/compliance/export/excel - Export to Excel"""
-    print("\nTest 6: Exporting compliance report to Excel...")
+    print("\nTest 7: Exporting compliance report to Excel...")
     
     try:
         # Create test data
         create_test_compliance_data()
+        
+        # Get auth headers
+        headers = get_auth_headers()
         
         # Prepare filters
         filters = {
@@ -513,7 +568,7 @@ def test_export_compliance_report_excel():
             "certification_type": "all"
         }
         
-        response = client.post("/api/compliance/export/excel", json=filters)
+        response = client.post("/api/compliance/export/excel", json=filters, headers=headers)
         
         # Check response
         assert response.status_code == 200
@@ -537,11 +592,14 @@ def test_export_compliance_report_excel():
 
 def test_export_compliance_report_xlsx():
     """Test POST /api/compliance/export/xlsx - Export to XLSX"""
-    print("\nTest 7: Exporting compliance report to XLSX...")
+    print("\nTest 8: Exporting compliance report to XLSX...")
     
     try:
         # Create test data
         create_test_compliance_data()
+        
+        # Get auth headers
+        headers = get_auth_headers()
         
         # Prepare filters
         filters = {
@@ -553,7 +611,7 @@ def test_export_compliance_report_xlsx():
         }
         
         # Test with 'xlsx' format
-        response = client.post("/api/compliance/export/xlsx", json=filters)
+        response = client.post("/api/compliance/export/xlsx", json=filters, headers=headers)
         
         # Should work since format='excel' accepts both 'excel' and 'xlsx'
         if response.status_code == 200:
@@ -570,11 +628,14 @@ def test_export_compliance_report_xlsx():
 
 def test_export_compliance_report_pdf():
     """Test POST /api/compliance/export/pdf - Export to PDF"""
-    print("\nTest 8: Exporting compliance report to PDF...")
+    print("\nTest 9: Exporting compliance report to PDF...")
     
     try:
         # Create test data
         create_test_compliance_data()
+        
+        # Get auth headers
+        headers = get_auth_headers()
         
         # Prepare filters
         filters = {
@@ -585,7 +646,7 @@ def test_export_compliance_report_pdf():
             "certification_type": "all"
         }
         
-        response = client.post("/api/compliance/export/pdf", json=filters)
+        response = client.post("/api/compliance/export/pdf", json=filters, headers=headers)
         
         # Check response
         if response.status_code == 200:
@@ -613,11 +674,14 @@ def test_export_compliance_report_pdf():
 
 def test_export_compliance_report_unsupported_format():
     """Test POST /api/compliance/export/unsupported - Unsupported format"""
-    print("\nTest 9: Testing export with unsupported format...")
+    print("\nTest 10: Testing export with unsupported format...")
     
     try:
         # Create test data
         create_test_compliance_data()
+        
+        # Get auth headers
+        headers = get_auth_headers()
         
         # Prepare filters
         filters = {
@@ -629,7 +693,7 @@ def test_export_compliance_report_unsupported_format():
         }
         
         # Test with unsupported format
-        response = client.post("/api/compliance/export/csv", json=filters)
+        response = client.post("/api/compliance/export/csv", json=filters, headers=headers)
         
         # Should return 400 for unsupported format
         if response.status_code == 400:
@@ -644,11 +708,14 @@ def test_export_compliance_report_unsupported_format():
 
 def test_compliance_report_invalid_filters():
     """Test POST /api/compliance/report - Invalid filters"""
-    print("\nTest 10: Testing compliance report with invalid filters...")
+    print("\nTest 11: Testing compliance report with invalid filters...")
     
     try:
         # Create test data
         create_test_compliance_data()
+        
+        # Get auth headers
+        headers = get_auth_headers()
         
         # Prepare invalid filters (missing required fields)
         filters = {
@@ -656,7 +723,7 @@ def test_compliance_report_invalid_filters():
             "compliance_threshold": 150  # Invalid - should be 0-100
         }
         
-        response = client.post("/api/compliance/report", json=filters)
+        response = client.post("/api/compliance/report", json=filters, headers=headers)
         
         # Should still return 200 or 400
         if response.status_code == 200:
@@ -672,11 +739,14 @@ def test_compliance_report_invalid_filters():
 
 def test_compliance_report_empty_database():
     """Test POST /api/compliance/report - Empty database"""
-    print("\nTest 11: Testing compliance report with empty database...")
+    print("\nTest 12: Testing compliance report with empty database...")
     
     try:
         # Ensure database is empty
         cleanup_database()
+        
+        # Get auth headers
+        headers = get_auth_headers()
         
         # Prepare filters
         filters = {
@@ -687,7 +757,7 @@ def test_compliance_report_empty_database():
             "certification_type": "all"
         }
         
-        response = client.post("/api/compliance/report", json=filters)
+        response = client.post("/api/compliance/report", json=filters, headers=headers)
         assert response.status_code == 200
         
         data = response.json()
@@ -718,11 +788,14 @@ def test_compliance_report_empty_database():
 
 def test_compliance_report_certification_types():
     """Test POST /api/compliance/report - Filter by certification type"""
-    print("\nTest 12: Testing compliance report with certification type filter...")
+    print("\nTest 13: Testing compliance report with certification type filter...")
     
     try:
         # Create test data
         create_test_compliance_data()
+        
+        # Get auth headers
+        headers = get_auth_headers()
         
         # Try different certification type filters
         test_cases = [
@@ -740,7 +813,7 @@ def test_compliance_report_certification_types():
                 "certification_type": test_case["certification_type"]
             }
             
-            response = client.post("/api/compliance/report", json=filters)
+            response = client.post("/api/compliance/report", json=filters, headers=headers)
             assert response.status_code == 200
             
             data = response.json()
@@ -761,13 +834,50 @@ def test_compliance_report_certification_types():
         print(f"❌ Error: {e}")
         raise
 
+def test_invalid_token_compliance():
+    """Test compliance endpoints with invalid JWT token"""
+    print("\nTest 14: Testing compliance endpoints with invalid token...")
+    
+    try:
+        # Create test data
+        create_test_compliance_data()
+        
+        # Prepare filters
+        filters = {
+            "department": "all",
+            "compliance_threshold": 80,
+            "include_expired": True,
+            "include_expiring_soon": True,
+            "certification_type": "all"
+        }
+        
+        # Test with invalid token
+        headers = {"Authorization": "Bearer invalid_token"}
+        response = client.post("/api/compliance/report", json=filters, headers=headers)
+        assert response.status_code == 401 or response.status_code == 403
+        print("✅ Invalid token correctly rejected for report endpoint")
+        
+        # Test with expired token
+        expire = datetime.utcnow() - timedelta(minutes=1)  # Expired 1 minute ago
+        payload = {"sub": USER_EMAIL, "exp": expire}
+        expired_token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+        headers = {"Authorization": f"Bearer {expired_token}"}
+        response = client.post("/api/compliance/export/excel", json=filters, headers=headers)
+        assert response.status_code == 401 or response.status_code == 403
+        print("✅ Expired token correctly rejected for export endpoint")
+        
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        raise
+
 # Run tests with pytest
 if __name__ == "__main__":
     print("=" * 60)
-    print("Running Compliance API Tests")
+    print("Running Compliance API Tests (with Authentication)")
     print("=" * 60)
     
     tests = [
+        ("Unauthorized Access", test_unauthorized_access_compliance),
         ("Generate Report - All Departments", test_generate_compliance_report_all),
         ("Generate Report - By Department", test_generate_compliance_report_by_department),
         ("Generate Report - With Date Range", test_generate_compliance_report_with_date_range),
@@ -780,6 +890,7 @@ if __name__ == "__main__":
         ("Generate Report - Invalid Filters", test_compliance_report_invalid_filters),
         ("Generate Report - Empty Database", test_compliance_report_empty_database),
         ("Generate Report - Certification Types", test_compliance_report_certification_types),
+        ("Invalid Token", test_invalid_token_compliance),
     ]
     
     passed = 0

@@ -1,4 +1,4 @@
-# tests/test_departments.py
+# tests/test_departments.py - UPDATED WITH AUTHENTICATION
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -6,8 +6,24 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fastapi.testclient import TestClient
 from app.main import app
 import json
+from datetime import datetime, timedelta
+from jose import jwt
 
 client = TestClient(app)
+
+# Authentication constants
+SECRET_KEY = "supersecretkey"
+ALGORITHM = "HS256"
+USER_EMAIL = "skillflow@gmail.com"
+
+def get_auth_headers():
+    """Generate authentication headers with a valid JWT token"""
+    # Create a token (same logic as in your auth.py)
+    expire = datetime.utcnow() + timedelta(minutes=60)
+    payload = {"sub": USER_EMAIL, "exp": expire}
+    token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    
+    return {"Authorization": f"Bearer {token}"}
 
 # Test data
 TEST_DEPARTMENT_DATA = {
@@ -22,26 +38,45 @@ TEST_DEPARTMENT_UPDATE_DATA = {
 
 def create_test_department():
     """Helper to create a test department"""
-    response = client.post("/departments/", json=TEST_DEPARTMENT_DATA)
+    headers = get_auth_headers()
+    response = client.post("/departments/", json=TEST_DEPARTMENT_DATA, headers=headers)
     if response.status_code == 201:
         return response.json()
     return None
 
 def delete_test_department(department_id: int):
     """Helper to delete a test department"""
-    client.delete(f"/departments/{department_id}")
+    headers = get_auth_headers()
+    client.delete(f"/departments/{department_id}", headers=headers)
+
+def test_unauthorized_access():
+    """Test that department endpoints return 401 without authentication"""
+    print("Test 1: Testing unauthorized access to department endpoints...")
+    
+    # Test create endpoint without auth
+    response = client.post("/departments/", json=TEST_DEPARTMENT_DATA)
+    assert response.status_code == 401 or response.status_code == 403
+    print("✅ Unauthorized access to create endpoint correctly blocked")
+    
+    # Test get list without auth
+    response = client.get("/departments/")
+    assert response.status_code == 401 or response.status_code == 403
+    print("✅ Unauthorized access to list endpoint correctly blocked")
 
 def test_create_department_success():
-    """Test creating a new department"""
-    print("Testing create department...")
+    """Test creating a new department with authentication"""
+    print("\nTest 2: Testing create department with authentication...")
+    
+    # Get auth headers
+    headers = get_auth_headers()
     
     # Clean up if exists
-    existing = client.get("/departments/")
+    existing = client.get("/departments/", headers=headers)
     for dept in existing.json().get("departments", []):
         if dept.get("name") == TEST_DEPARTMENT_DATA["name"]:
             delete_test_department(dept["id"])
     
-    response = client.post("/departments/", json=TEST_DEPARTMENT_DATA)
+    response = client.post("/departments/", json=TEST_DEPARTMENT_DATA, headers=headers)
     
     print(f"Status code: {response.status_code}")
     
@@ -64,8 +99,11 @@ def test_create_department_success():
         return False
 
 def test_create_department_duplicate_name():
-    """Test creating department with duplicate name"""
-    print("\nTesting duplicate name validation...")
+    """Test creating department with duplicate name with authentication"""
+    print("\nTest 3: Testing duplicate name validation with authentication...")
+    
+    # Get auth headers
+    headers = get_auth_headers()
     
     # Create first department
     dept1 = create_test_department()
@@ -74,7 +112,7 @@ def test_create_department_duplicate_name():
         return True
     
     # Try to create second department with same name
-    response = client.post("/departments/", json=TEST_DEPARTMENT_DATA)
+    response = client.post("/departments/", json=TEST_DEPARTMENT_DATA, headers=headers)
     
     print(f"Status code: {response.status_code}")
     
@@ -96,10 +134,13 @@ def test_create_department_duplicate_name():
         return False
 
 def test_get_departments_list():
-    """Test getting list of departments"""
-    print("\nTesting get departments list...")
+    """Test getting list of departments with authentication"""
+    print("\nTest 4: Testing get departments list with authentication...")
     
-    response = client.get("/departments/")
+    # Get auth headers
+    headers = get_auth_headers()
+    
+    response = client.get("/departments/", headers=headers)
     
     print(f"Status code: {response.status_code}")
     
@@ -137,8 +178,11 @@ def test_get_departments_list():
         return False
 
 def test_get_department_by_id():
-    """Test getting department by ID"""
-    print("\nTesting get department by ID...")
+    """Test getting department by ID with authentication"""
+    print("\nTest 5: Testing get department by ID with authentication...")
+    
+    # Get auth headers
+    headers = get_auth_headers()
     
     # Create test department
     dept = create_test_department()
@@ -148,9 +192,8 @@ def test_get_department_by_id():
     
     dept_id = dept["id"]
     
-    # First try direct endpoint (might not exist, so we'll use list endpoint)
-    # But we can still test the update/delete endpoints
-    response = client.put(f"/departments/{dept_id}", json=TEST_DEPARTMENT_UPDATE_DATA)
+    # Try to update the department (which also retrieves it)
+    response = client.put(f"/departments/{dept_id}", json=TEST_DEPARTMENT_UPDATE_DATA, headers=headers)
     
     if response.status_code == 200:
         data = response.json()
@@ -170,11 +213,14 @@ def test_get_department_by_id():
         return False
 
 def test_get_nonexistent_department():
-    """Test getting non-existent department"""
-    print("\nTesting get non-existent department...")
+    """Test getting non-existent department with authentication"""
+    print("\nTest 6: Testing get non-existent department with authentication...")
+    
+    # Get auth headers
+    headers = get_auth_headers()
     
     # Try to update non-existent department
-    response = client.put("/departments/999999", json=TEST_DEPARTMENT_UPDATE_DATA)
+    response = client.put("/departments/999999", json=TEST_DEPARTMENT_UPDATE_DATA, headers=headers)
     
     print(f"Status code: {response.status_code}")
     
@@ -188,8 +234,11 @@ def test_get_nonexistent_department():
         return False
 
 def test_update_department():
-    """Test updating a department"""
-    print("\nTesting update department...")
+    """Test updating a department with authentication"""
+    print("\nTest 7: Testing update department with authentication...")
+    
+    # Get auth headers
+    headers = get_auth_headers()
     
     # Create test department
     dept = create_test_department()
@@ -200,7 +249,7 @@ def test_update_department():
     dept_id = dept["id"]
     
     # Update the department
-    response = client.put(f"/departments/{dept_id}", json=TEST_DEPARTMENT_UPDATE_DATA)
+    response = client.put(f"/departments/{dept_id}", json=TEST_DEPARTMENT_UPDATE_DATA, headers=headers)
     
     print(f"Status code: {response.status_code}")
     
@@ -226,8 +275,11 @@ def test_update_department():
         return False
 
 def test_update_department_duplicate_name():
-    """Test updating department with duplicate name"""
-    print("\nTesting update with duplicate name...")
+    """Test updating department with duplicate name with authentication"""
+    print("\nTest 8: Testing update with duplicate name with authentication...")
+    
+    # Get auth headers
+    headers = get_auth_headers()
     
     # Create first department
     dept1 = create_test_department()
@@ -240,7 +292,7 @@ def test_update_department_duplicate_name():
         "name": "Another Test Department",
         "description": "Another department"
     }
-    response = client.post("/departments/", json=dept2_data)
+    response = client.post("/departments/", json=dept2_data, headers=headers)
     if response.status_code != 201:
         delete_test_department(dept1["id"])
         print("⚠️  Could not create second department, skipping test")
@@ -250,7 +302,7 @@ def test_update_department_duplicate_name():
     
     # Try to update second department with first department's name
     update_data = {"name": dept1["name"]}
-    response = client.put(f"/departments/{dept2['id']}", json=update_data)
+    response = client.put(f"/departments/{dept2['id']}", json=update_data, headers=headers)
     
     print(f"Status code: {response.status_code}")
     
@@ -274,8 +326,11 @@ def test_update_department_duplicate_name():
         return False
 
 def test_delete_department():
-    """Test deleting a department"""
-    print("\nTesting delete department...")
+    """Test deleting a department with authentication"""
+    print("\nTest 9: Testing delete department with authentication...")
+    
+    # Get auth headers
+    headers = get_auth_headers()
     
     # Create test department
     dept = create_test_department()
@@ -286,7 +341,7 @@ def test_delete_department():
     dept_id = dept["id"]
     
     # Delete the department
-    response = client.delete(f"/departments/{dept_id}")
+    response = client.delete(f"/departments/{dept_id}", headers=headers)
     
     print(f"Status code: {response.status_code}")
     
@@ -294,7 +349,7 @@ def test_delete_department():
         print(f"✅ Deleted department ID {dept_id}")
         
         # Verify department is deleted by trying to update it
-        get_response = client.put(f"/departments/{dept_id}", json=TEST_DEPARTMENT_UPDATE_DATA)
+        get_response = client.put(f"/departments/{dept_id}", json=TEST_DEPARTMENT_UPDATE_DATA, headers=headers)
         assert get_response.status_code == 404
         
         return True
@@ -307,15 +362,18 @@ def test_delete_department():
         return False
 
 def test_department_validation():
-    """Test department validation"""
-    print("\nTesting department validation...")
+    """Test department validation with authentication"""
+    print("\nTest 10: Testing department validation with authentication...")
+    
+    # Get auth headers
+    headers = get_auth_headers()
     
     # Test missing required field (name)
     invalid_data = {
         "description": "Department without name"
     }
     
-    response = client.post("/departments/", json=invalid_data)
+    response = client.post("/departments/", json=invalid_data, headers=headers)
     
     print(f"Status code: {response.status_code}")
     
@@ -327,11 +385,14 @@ def test_department_validation():
         return False
 
 def test_department_pagination():
-    """Test department pagination"""
-    print("\nTesting department pagination...")
+    """Test department pagination with authentication"""
+    print("\nTest 11: Testing department pagination with authentication...")
+    
+    # Get auth headers
+    headers = get_auth_headers()
     
     # Test with pagination parameters
-    response = client.get("/departments/?skip=0&limit=2")
+    response = client.get("/departments/?skip=0&limit=2", headers=headers)
     
     print(f"Status code for pagination: {response.status_code}")
     
@@ -350,10 +411,13 @@ def test_department_pagination():
         return False
 
 def test_department_with_employee_counts():
-    """Test that departments include employee counts"""
-    print("\nTesting department employee counts...")
+    """Test that departments include employee counts with authentication"""
+    print("\nTest 12: Testing department employee counts with authentication...")
     
-    response = client.get("/departments/")
+    # Get auth headers
+    headers = get_auth_headers()
+    
+    response = client.get("/departments/", headers=headers)
     
     if response.status_code == 200:
         data = response.json()
@@ -374,101 +438,60 @@ def test_department_with_employee_counts():
         print(f"❌ Failed to get departments: {response.text}")
         return False
 
+def test_invalid_token():
+    """Test department endpoints with invalid JWT token"""
+    print("\nTest 13: Testing department endpoints with invalid token...")
+    
+    # Test with invalid token
+    headers = {"Authorization": "Bearer invalid_token"}
+    response = client.post("/departments/", json=TEST_DEPARTMENT_DATA, headers=headers)
+    assert response.status_code == 401 or response.status_code == 403
+    print("✅ Invalid token correctly rejected for create endpoint")
+    
+    # Test with expired token
+    expire = datetime.utcnow() - timedelta(minutes=1)  # Expired 1 minute ago
+    payload = {"sub": USER_EMAIL, "exp": expire}
+    expired_token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    headers = {"Authorization": f"Bearer {expired_token}"}
+    response = client.get("/departments/", headers=headers)
+    assert response.status_code == 401 or response.status_code == 403
+    print("✅ Expired token correctly rejected for list endpoint")
+
 if __name__ == "__main__":
     print("=" * 60)
-    print("Running Departments API Tests")
+    print("Running Departments API Tests (with Authentication)")
     print("=" * 60)
     
+    tests = [
+        ("Unauthorized Access", test_unauthorized_access),
+        ("Create Department", test_create_department_success),
+        ("Duplicate Name Validation", test_create_department_duplicate_name),
+        ("Get Departments List", test_get_departments_list),
+        ("Get Department By ID", test_get_department_by_id),
+        ("Get Non-existent Department", test_get_nonexistent_department),
+        ("Update Department", test_update_department),
+        ("Update Duplicate Name", test_update_department_duplicate_name),
+        ("Delete Department", test_delete_department),
+        ("Department Validation", test_department_validation),
+        ("Department Pagination", test_department_pagination),
+        ("Employee Counts", test_department_with_employee_counts),
+        ("Invalid Token", test_invalid_token),
+    ]
+    
     tests_passed = 0
-    tests_total = 11
+    tests_total = len(tests)
     
-    try:
-        if test_create_department_success():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_create_department_success failed: {e}")
-    except Exception as e:
-        print(f"❌ test_create_department_success failed with error: {e}")
-    
-    try:
-        if test_create_department_duplicate_name():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_create_department_duplicate_name failed: {e}")
-    except Exception as e:
-        print(f"❌ test_create_department_duplicate_name failed with error: {e}")
-    
-    try:
-        if test_get_departments_list():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_get_departments_list failed: {e}")
-    except Exception as e:
-        print(f"❌ test_get_departments_list failed with error: {e}")
-    
-    try:
-        if test_get_department_by_id():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_get_department_by_id failed: {e}")
-    except Exception as e:
-        print(f"❌ test_get_department_by_id failed with error: {e}")
-    
-    try:
-        if test_get_nonexistent_department():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_get_nonexistent_department failed: {e}")
-    except Exception as e:
-        print(f"❌ test_get_nonexistent_department failed with error: {e}")
-    
-    try:
-        if test_update_department():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_update_department failed: {e}")
-    except Exception as e:
-        print(f"❌ test_update_department failed with error: {e}")
-    
-    try:
-        if test_update_department_duplicate_name():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_update_department_duplicate_name failed: {e}")
-    except Exception as e:
-        print(f"❌ test_update_department_duplicate_name failed with error: {e}")
-    
-    try:
-        if test_delete_department():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_delete_department failed: {e}")
-    except Exception as e:
-        print(f"❌ test_delete_department failed with error: {e}")
-    
-    try:
-        if test_department_validation():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_department_validation failed: {e}")
-    except Exception as e:
-        print(f"❌ test_department_validation failed with error: {e}")
-    
-    try:
-        if test_department_pagination():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_department_pagination failed: {e}")
-    except Exception as e:
-        print(f"❌ test_department_pagination failed with error: {e}")
-    
-    try:
-        if test_department_with_employee_counts():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_department_with_employee_counts failed: {e}")
-    except Exception as e:
-        print(f"❌ test_department_with_employee_counts failed with error: {e}")
+    for test_name, test_func in tests:
+        try:
+            if test_func():
+                tests_passed += 1
+                print(f"✅ {test_name}: PASSED")
+            else:
+                print(f"❌ {test_name}: FAILED")
+        except AssertionError as e:
+            print(f"❌ {test_name}: FAILED - {e}")
+        except Exception as e:
+            print(f"❌ {test_name}: FAILED with error - {e}")
     
     print("\n" + "=" * 60)
     print(f"Test Results: {tests_passed}/{tests_total} passed")

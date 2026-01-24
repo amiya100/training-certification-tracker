@@ -1,20 +1,49 @@
-# tests/test_dashboard.py
+# tests/test_dashboard.py - UPDATED WITH AUTHENTICATION
 import sys
 import os
+import time
+from datetime import datetime, timedelta
+import pytz
+from jose import jwt
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi.testclient import TestClient
 from app.main import app
-from datetime import datetime, timedelta
-import pytz
 
 client = TestClient(app)
 
-def test_dashboard_endpoint():
-    """Test the main dashboard data endpoint"""
-    print("Testing dashboard endpoint...")
+# Authentication constants
+SECRET_KEY = "supersecretkey"
+ALGORITHM = "HS256"
+USER_EMAIL = "skillflow@gmail.com"
+
+def get_auth_headers():
+    """Generate authentication headers with a valid JWT token"""
+    # Create a token (same logic as in your auth.py)
+    expire = datetime.utcnow() + timedelta(minutes=60)
+    payload = {"sub": USER_EMAIL, "exp": expire}
+    token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
     
+    return {"Authorization": f"Bearer {token}"}
+
+def test_unauthorized_access():
+    """Test that dashboard endpoints return 401 without authentication"""
+    print("Test 1: Testing unauthorized access to dashboard endpoints...")
+    
+    # Test dashboard endpoint without auth
     response = client.get("/api/dashboard/dashboard-data")
+    assert response.status_code == 401 or response.status_code == 403
+    print("✅ Unauthorized access to dashboard endpoint correctly blocked")
+
+def test_dashboard_endpoint():
+    """Test the main dashboard data endpoint with authentication"""
+    print("\nTest 2: Testing dashboard endpoint with authentication...")
+    
+    # Get auth headers
+    headers = get_auth_headers()
+    
+    response = client.get("/api/dashboard/dashboard-data", headers=headers)
     
     print(f"Status code: {response.status_code}")
     
@@ -70,10 +99,13 @@ def test_dashboard_endpoint():
         return False
 
 def test_dashboard_stats_are_numbers():
-    """Test that dashboard stats are valid numbers"""
-    print("\nTesting dashboard stats data types...")
+    """Test that dashboard stats are valid numbers with authentication"""
+    print("\nTest 3: Testing dashboard stats data types with authentication...")
     
-    response = client.get("/api/dashboard/dashboard-data")
+    # Get auth headers
+    headers = get_auth_headers()
+    
+    response = client.get("/api/dashboard/dashboard-data", headers=headers)
     
     if response.status_code == 200:
         data = response.json()
@@ -98,10 +130,13 @@ def test_dashboard_stats_are_numbers():
         return False
 
 def test_employee_status_distribution():
-    """Test employee status distribution calculations"""
-    print("\nTesting employee status distribution...")
+    """Test employee status distribution calculations with authentication"""
+    print("\nTest 4: Testing employee status distribution with authentication...")
     
-    response = client.get("/api/dashboard/dashboard-data")
+    # Get auth headers
+    headers = get_auth_headers()
+    
+    response = client.get("/api/dashboard/dashboard-data", headers=headers)
     
     if response.status_code == 200:
         data = response.json()
@@ -140,10 +175,13 @@ def test_employee_status_distribution():
         return False
 
 def test_certification_alerts_structure():
-    """Test certification alerts structure"""
-    print("\nTesting certification alerts structure...")
+    """Test certification alerts structure with authentication"""
+    print("\nTest 5: Testing certification alerts structure with authentication...")
     
-    response = client.get("/api/dashboard/dashboard-data")
+    # Get auth headers
+    headers = get_auth_headers()
+    
+    response = client.get("/api/dashboard/dashboard-data", headers=headers)
     
     if response.status_code == 200:
         data = response.json()
@@ -181,13 +219,14 @@ def test_certification_alerts_structure():
         return False
 
 def test_dashboard_performance():
-    """Test dashboard response time"""
-    print("\nTesting dashboard performance...")
+    """Test dashboard response time with authentication"""
+    print("\nTest 6: Testing dashboard performance with authentication...")
     
-    import time
+    # Get auth headers
+    headers = get_auth_headers()
     
     start_time = time.time()
-    response = client.get("/api/dashboard/dashboard-data")
+    response = client.get("/api/dashboard/dashboard-data", headers=headers)
     end_time = time.time()
     
     response_time = (end_time - start_time) * 1000  # Convert to milliseconds
@@ -205,63 +244,72 @@ def test_dashboard_performance():
         return False
 
 def test_invalid_dashboard_endpoint():
-    """Test invalid dashboard endpoints"""
-    print("\nTesting invalid dashboard endpoints...")
+    """Test invalid dashboard endpoints with authentication"""
+    print("\nTest 7: Testing invalid dashboard endpoints with authentication...")
+    
+    # Get auth headers
+    headers = get_auth_headers()
     
     # Test non-existent endpoint
-    response = client.get("/api/dashboard/invalid-endpoint")
+    response = client.get("/api/dashboard/invalid-endpoint", headers=headers)
     assert response.status_code == 404, f"Expected 404, got {response.status_code}"
     
     # Test wrong method
-    response = client.post("/api/dashboard/dashboard-data")
+    response = client.post("/api/dashboard/dashboard-data", headers=headers)
     assert response.status_code == 405, f"Expected 405, got {response.status_code}"
     
     print("✅ Invalid endpoint tests passed!")
     return True
 
+def test_invalid_token():
+    """Test dashboard endpoints with invalid JWT token"""
+    print("\nTest 8: Testing dashboard endpoints with invalid token...")
+    
+    # Test with invalid token
+    headers = {"Authorization": "Bearer invalid_token"}
+    response = client.get("/api/dashboard/dashboard-data", headers=headers)
+    assert response.status_code == 401 or response.status_code == 403
+    print("✅ Invalid token correctly rejected")
+    
+    # Test with expired token
+    expire = datetime.utcnow() - timedelta(minutes=1)  # Expired 1 minute ago
+    payload = {"sub": USER_EMAIL, "exp": expire}
+    expired_token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    headers = {"Authorization": f"Bearer {expired_token}"}
+    response = client.get("/api/dashboard/dashboard-data", headers=headers)
+    assert response.status_code == 401 or response.status_code == 403
+    print("✅ Expired token correctly rejected")
+
 if __name__ == "__main__":
     print("=" * 60)
-    print("Running Dashboard API Tests")
+    print("Running Dashboard API Tests (with Authentication)")
     print("=" * 60)
     
+    tests = [
+        ("Unauthorized Access", test_unauthorized_access),
+        ("Dashboard Endpoint", test_dashboard_endpoint),
+        ("Stats Data Types", test_dashboard_stats_are_numbers),
+        ("Employee Status Distribution", test_employee_status_distribution),
+        ("Certification Alerts Structure", test_certification_alerts_structure),
+        ("Dashboard Performance", test_dashboard_performance),
+        ("Invalid Endpoints", test_invalid_dashboard_endpoint),
+        ("Invalid Token", test_invalid_token),
+    ]
+    
     tests_passed = 0
-    tests_total = 6
+    tests_total = len(tests)
     
-    try:
-        if test_dashboard_endpoint():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_dashboard_endpoint failed: {e}")
-    
-    try:
-        if test_dashboard_stats_are_numbers():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_dashboard_stats_are_numbers failed: {e}")
-    
-    try:
-        if test_employee_status_distribution():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_employee_status_distribution failed: {e}")
-    
-    try:
-        if test_certification_alerts_structure():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_certification_alerts_structure failed: {e}")
-    
-    try:
-        if test_dashboard_performance():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_dashboard_performance failed: {e}")
-    
-    try:
-        if test_invalid_dashboard_endpoint():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_invalid_dashboard_endpoint failed: {e}")
+    for test_name, test_func in tests:
+        try:
+            if test_func():
+                tests_passed += 1
+                print(f"✅ {test_name}: PASSED")
+            else:
+                print(f"❌ {test_name}: FAILED")
+        except AssertionError as e:
+            print(f"❌ {test_name}: FAILED - {e}")
+        except Exception as e:
+            print(f"❌ {test_name}: FAILED with error - {e}")
     
     print("\n" + "=" * 60)
     print(f"Test Results: {tests_passed}/{tests_total} passed")

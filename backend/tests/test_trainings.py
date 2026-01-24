@@ -1,4 +1,4 @@
-# tests/test_trainings.py
+# tests/test_trainings.py - UPDATED WITH AUTHENTICATION
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -6,8 +6,24 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fastapi.testclient import TestClient
 from app.main import app
 import json
+from datetime import datetime, timedelta
+from jose import jwt
 
 client = TestClient(app)
+
+# Authentication constants
+SECRET_KEY = "supersecretkey"
+ALGORITHM = "HS256"
+USER_EMAIL = "skillflow@gmail.com"
+
+def get_auth_headers():
+    """Generate authentication headers with a valid JWT token"""
+    # Create a token (same logic as in your auth.py)
+    expire = datetime.utcnow() + timedelta(minutes=60)
+    payload = {"sub": USER_EMAIL, "exp": expire}
+    token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    
+    return {"Authorization": f"Bearer {token}"}
 
 # Test data
 TEST_TRAINING_DATA = {
@@ -24,26 +40,46 @@ TEST_TRAINING_UPDATE_DATA = {
 
 def create_test_training():
     """Helper to create a test training"""
+    headers = get_auth_headers()
+    
     # Clean up if exists
-    existing = client.get("/trainings/")
+    existing = client.get("/trainings/", headers=headers)
     for train in existing.json().get("trainings", []):
         if train.get("name") == TEST_TRAINING_DATA["name"]:
             delete_test_training(train["id"])
     
-    response = client.post("/trainings/", json=TEST_TRAINING_DATA)
+    response = client.post("/trainings/", json=TEST_TRAINING_DATA, headers=headers)
     if response.status_code == 201:
         return response.json()
     return None
 
 def delete_test_training(training_id: int):
     """Helper to delete a test training"""
-    client.delete(f"/trainings/{training_id}")
+    headers = get_auth_headers()
+    client.delete(f"/trainings/{training_id}", headers=headers)
+
+def test_unauthorized_access():
+    """Test that training endpoints return 401 without authentication"""
+    print("Test 1: Testing unauthorized access to training endpoints...")
+    
+    # Test create endpoint without auth
+    response = client.post("/trainings/", json=TEST_TRAINING_DATA)
+    assert response.status_code == 401 or response.status_code == 403
+    print("✅ Unauthorized access to create endpoint correctly blocked")
+    
+    # Test get list without auth
+    response = client.get("/trainings/")
+    assert response.status_code == 401 or response.status_code == 403
+    print("✅ Unauthorized access to list endpoint correctly blocked")
 
 def test_create_training_success():
-    """Test creating a new training"""
-    print("Testing create training...")
+    """Test creating a new training with authentication"""
+    print("\nTest 2: Testing create training with authentication...")
     
-    response = client.post("/trainings/", json=TEST_TRAINING_DATA)
+    # Get auth headers
+    headers = get_auth_headers()
+    
+    response = client.post("/trainings/", json=TEST_TRAINING_DATA, headers=headers)
     
     print(f"Status code: {response.status_code}")
     
@@ -67,10 +103,13 @@ def test_create_training_success():
         return False
 
 def test_get_trainings_list():
-    """Test getting list of trainings"""
-    print("\nTesting get trainings list...")
+    """Test getting list of trainings with authentication"""
+    print("\nTest 3: Testing get trainings list with authentication...")
     
-    response = client.get("/trainings/")
+    # Get auth headers
+    headers = get_auth_headers()
+    
+    response = client.get("/trainings/", headers=headers)
     
     print(f"Status code: {response.status_code}")
     
@@ -104,8 +143,11 @@ def test_get_trainings_list():
         return False
 
 def test_get_training_by_id():
-    """Test getting training by ID"""
-    print("\nTesting get training by ID...")
+    """Test getting training by ID with authentication"""
+    print("\nTest 4: Testing get training by ID with authentication...")
+    
+    # Get auth headers
+    headers = get_auth_headers()
     
     # Create test training
     training = create_test_training()
@@ -115,7 +157,7 @@ def test_get_training_by_id():
     
     training_id = training["id"]
     
-    response = client.get(f"/trainings/{training_id}")
+    response = client.get(f"/trainings/{training_id}", headers=headers)
     
     print(f"Status code: {response.status_code}")
     
@@ -142,11 +184,14 @@ def test_get_training_by_id():
         return False
 
 def test_get_nonexistent_training():
-    """Test getting non-existent training"""
-    print("\nTesting get non-existent training...")
+    """Test getting non-existent training with authentication"""
+    print("\nTest 5: Testing get non-existent training with authentication...")
+    
+    # Get auth headers
+    headers = get_auth_headers()
     
     # Use a very high ID that shouldn't exist
-    response = client.get("/trainings/999999")
+    response = client.get("/trainings/999999", headers=headers)
     
     print(f"Status code: {response.status_code}")
     
@@ -160,8 +205,11 @@ def test_get_nonexistent_training():
         return False
 
 def test_update_training():
-    """Test updating a training"""
-    print("\nTesting update training...")
+    """Test updating a training with authentication"""
+    print("\nTest 6: Testing update training with authentication...")
+    
+    # Get auth headers
+    headers = get_auth_headers()
     
     # Create test training
     training = create_test_training()
@@ -172,7 +220,7 @@ def test_update_training():
     training_id = training["id"]
     
     # Update the training
-    response = client.put(f"/trainings/{training_id}", json=TEST_TRAINING_UPDATE_DATA)
+    response = client.put(f"/trainings/{training_id}", json=TEST_TRAINING_UPDATE_DATA, headers=headers)
     
     print(f"Status code: {response.status_code}")
     
@@ -199,8 +247,11 @@ def test_update_training():
         return False
 
 def test_partial_update_training():
-    """Test partial update of a training"""
-    print("\nTesting partial update training...")
+    """Test partial update of a training with authentication"""
+    print("\nTest 7: Testing partial update training with authentication...")
+    
+    # Get auth headers
+    headers = get_auth_headers()
     
     # Create test training
     training = create_test_training()
@@ -215,7 +266,7 @@ def test_partial_update_training():
         "description": "Only description updated"
     }
     
-    response = client.put(f"/trainings/{training_id}", json=partial_update)
+    response = client.put(f"/trainings/{training_id}", json=partial_update, headers=headers)
     
     print(f"Status code: {response.status_code}")
     
@@ -243,8 +294,11 @@ def test_partial_update_training():
         return False
 
 def test_delete_training():
-    """Test deleting a training"""
-    print("\nTesting delete training...")
+    """Test deleting a training with authentication"""
+    print("\nTest 8: Testing delete training with authentication...")
+    
+    # Get auth headers
+    headers = get_auth_headers()
     
     # Create test training
     training = create_test_training()
@@ -255,7 +309,7 @@ def test_delete_training():
     training_id = training["id"]
     
     # Delete the training
-    response = client.delete(f"/trainings/{training_id}")
+    response = client.delete(f"/trainings/{training_id}", headers=headers)
     
     print(f"Status code: {response.status_code}")
     
@@ -263,7 +317,7 @@ def test_delete_training():
         print(f"✅ Deleted training ID {training_id}")
         
         # Verify training is deleted
-        get_response = client.get(f"/trainings/{training_id}")
+        get_response = client.get(f"/trainings/{training_id}", headers=headers)
         assert get_response.status_code == 404
         
         return True
@@ -276,8 +330,11 @@ def test_delete_training():
         return False
 
 def test_training_validation():
-    """Test training validation"""
-    print("\nTesting training validation...")
+    """Test training validation with authentication"""
+    print("\nTest 9: Testing training validation with authentication...")
+    
+    # Get auth headers
+    headers = get_auth_headers()
     
     # Test missing required field (name)
     invalid_data = {
@@ -285,7 +342,7 @@ def test_training_validation():
         "duration_hours": 10.0
     }
     
-    response = client.post("/trainings/", json=invalid_data)
+    response = client.post("/trainings/", json=invalid_data, headers=headers)
     
     print(f"Status code: {response.status_code}")
     
@@ -297,11 +354,14 @@ def test_training_validation():
         return False
 
 def test_training_pagination():
-    """Test training pagination"""
-    print("\nTesting training pagination...")
+    """Test training pagination with authentication"""
+    print("\nTest 10: Testing training pagination with authentication...")
+    
+    # Get auth headers
+    headers = get_auth_headers()
     
     # Test with pagination parameters
-    response = client.get("/trainings/?skip=0&limit=2")
+    response = client.get("/trainings/?skip=0&limit=2", headers=headers)
     
     print(f"Status code for pagination: {response.status_code}")
     
@@ -320,8 +380,11 @@ def test_training_pagination():
         return False
 
 def test_training_with_invalid_duration():
-    """Test training with invalid duration"""
-    print("\nTesting training with invalid duration...")
+    """Test training with invalid duration with authentication"""
+    print("\nTest 11: Testing training with invalid duration with authentication...")
+    
+    # Get auth headers
+    headers = get_auth_headers()
     
     # Test with negative duration (should be validated by Pydantic)
     invalid_data = {
@@ -330,7 +393,7 @@ def test_training_with_invalid_duration():
         "duration_hours": -5.0  # Should fail validation
     }
     
-    response = client.post("/trainings/", json=invalid_data)
+    response = client.post("/trainings/", json=invalid_data, headers=headers)
     
     print(f"Status code: {response.status_code}")
     
@@ -346,8 +409,11 @@ def test_training_with_invalid_duration():
         return True  # Don't fail the test, just log
 
 def test_create_multiple_trainings():
-    """Test creating and retrieving multiple trainings"""
-    print("\nTesting multiple trainings...")
+    """Test creating and retrieving multiple trainings with authentication"""
+    print("\nTest 12: Testing multiple trainings with authentication...")
+    
+    # Get auth headers
+    headers = get_auth_headers()
     
     # Create two test trainings
     training1_data = {
@@ -363,13 +429,13 @@ def test_create_multiple_trainings():
     }
     
     # Clean up if they exist
-    existing = client.get("/trainings/")
+    existing = client.get("/trainings/", headers=headers)
     for train in existing.json().get("trainings", []):
         if train.get("name") in [training1_data["name"], training2_data["name"]]:
             delete_test_training(train["id"])
     
     # Create first training
-    response1 = client.post("/trainings/", json=training1_data)
+    response1 = client.post("/trainings/", json=training1_data, headers=headers)
     if response1.status_code != 201:
         print(f"⚠️  Could not create first training, skipping test: {response1.text}")
         return True
@@ -377,7 +443,7 @@ def test_create_multiple_trainings():
     training1 = response1.json()
     
     # Create second training
-    response2 = client.post("/trainings/", json=training2_data)
+    response2 = client.post("/trainings/", json=training2_data, headers=headers)
     if response2.status_code != 201:
         print(f"⚠️  Could not create second training, cleaning up: {response2.text}")
         delete_test_training(training1["id"])
@@ -386,7 +452,7 @@ def test_create_multiple_trainings():
     training2 = response2.json()
     
     # Get all trainings
-    response = client.get("/trainings/")
+    response = client.get("/trainings/", headers=headers)
     if response.status_code == 200:
         data = response.json()
         
@@ -416,101 +482,60 @@ def test_create_multiple_trainings():
         
         return False
 
+def test_invalid_token():
+    """Test training endpoints with invalid JWT token"""
+    print("\nTest 13: Testing training endpoints with invalid token...")
+    
+    # Test with invalid token
+    headers = {"Authorization": "Bearer invalid_token"}
+    response = client.post("/trainings/", json=TEST_TRAINING_DATA, headers=headers)
+    assert response.status_code == 401 or response.status_code == 403
+    print("✅ Invalid token correctly rejected for create endpoint")
+    
+    # Test with expired token
+    expire = datetime.utcnow() - timedelta(minutes=1)  # Expired 1 minute ago
+    payload = {"sub": USER_EMAIL, "exp": expire}
+    expired_token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    headers = {"Authorization": f"Bearer {expired_token}"}
+    response = client.get("/trainings/", headers=headers)
+    assert response.status_code == 401 or response.status_code == 403
+    print("✅ Expired token correctly rejected for list endpoint")
+
 if __name__ == "__main__":
     print("=" * 60)
-    print("Running Trainings API Tests")
+    print("Running Trainings API Tests (with Authentication)")
     print("=" * 60)
     
+    tests = [
+        ("Unauthorized Access", test_unauthorized_access),
+        ("Create Training", test_create_training_success),
+        ("Get Trainings List", test_get_trainings_list),
+        ("Get Training By ID", test_get_training_by_id),
+        ("Get Non-existent Training", test_get_nonexistent_training),
+        ("Update Training", test_update_training),
+        ("Partial Update Training", test_partial_update_training),
+        ("Delete Training", test_delete_training),
+        ("Training Validation", test_training_validation),
+        ("Training Pagination", test_training_pagination),
+        ("Invalid Duration", test_training_with_invalid_duration),
+        ("Multiple Trainings", test_create_multiple_trainings),
+        ("Invalid Token", test_invalid_token),
+    ]
+    
     tests_passed = 0
-    tests_total = 12
+    tests_total = len(tests)
     
-    try:
-        if test_create_training_success():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_create_training_success failed: {e}")
-    except Exception as e:
-        print(f"❌ test_create_training_success failed with error: {e}")
-    
-    try:
-        if test_get_trainings_list():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_get_trainings_list failed: {e}")
-    except Exception as e:
-        print(f"❌ test_get_trainings_list failed with error: {e}")
-    
-    try:
-        if test_get_training_by_id():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_get_training_by_id failed: {e}")
-    except Exception as e:
-        print(f"❌ test_get_training_by_id failed with error: {e}")
-    
-    try:
-        if test_get_nonexistent_training():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_get_nonexistent_training failed: {e}")
-    except Exception as e:
-        print(f"❌ test_get_nonexistent_training failed with error: {e}")
-    
-    try:
-        if test_update_training():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_update_training failed: {e}")
-    except Exception as e:
-        print(f"❌ test_update_training failed with error: {e}")
-    
-    try:
-        if test_partial_update_training():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_partial_update_training failed: {e}")
-    except Exception as e:
-        print(f"❌ test_partial_update_training failed with error: {e}")
-    
-    try:
-        if test_delete_training():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_delete_training failed: {e}")
-    except Exception as e:
-        print(f"❌ test_delete_training failed with error: {e}")
-    
-    try:
-        if test_training_validation():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_training_validation failed: {e}")
-    except Exception as e:
-        print(f"❌ test_training_validation failed with error: {e}")
-    
-    try:
-        if test_training_pagination():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_training_pagination failed: {e}")
-    except Exception as e:
-        print(f"❌ test_training_pagination failed with error: {e}")
-    
-    try:
-        if test_training_with_invalid_duration():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_training_with_invalid_duration failed: {e}")
-    except Exception as e:
-        print(f"❌ test_training_with_invalid_duration failed with error: {e}")
-    
-    try:
-        if test_create_multiple_trainings():
-            tests_passed += 1
-    except AssertionError as e:
-        print(f"❌ test_create_multiple_trainings failed: {e}")
-    except Exception as e:
-        print(f"❌ test_create_multiple_trainings failed with error: {e}")
+    for test_name, test_func in tests:
+        try:
+            if test_func():
+                tests_passed += 1
+                print(f"✅ {test_name}: PASSED")
+            else:
+                print(f"❌ {test_name}: FAILED")
+        except AssertionError as e:
+            print(f"❌ {test_name}: FAILED - {e}")
+        except Exception as e:
+            print(f"❌ {test_name}: FAILED with error - {e}")
     
     print("\n" + "=" * 60)
     print(f"Test Results: {tests_passed}/{tests_total} passed")
