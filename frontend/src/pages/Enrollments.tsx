@@ -500,36 +500,6 @@ const Enrollments: React.FC = () => {
                         }
                         bgColor="bg-green-500"
                     />
-
-                    <StatCard
-                        title="Avg Progress"
-                        value={`${Math.round(
-                            enrollments
-                                .filter((e) => e.status === "in_progress")
-                                .reduce(
-                                    (acc, e) => acc + (e.progress || 0),
-                                    0,
-                                ) /
-                                Math.max(
-                                    enrollments.filter(
-                                        (e) => e.status === "in_progress",
-                                    ).length,
-                                    1,
-                                ),
-                        )}%`}
-                        icon={
-                            <svg
-                                className="w-6 h-6 text-white"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <circle cx="12" cy="12" r="10" />
-                                <polyline points="12 6 12 12 16 14" />
-                            </svg>
-                        }
-                        bgColor="bg-blue-500"
-                    />
                 </div>
 
                 {/* Enrollments Table */}
