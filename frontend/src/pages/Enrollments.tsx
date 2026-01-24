@@ -48,7 +48,7 @@ const Enrollments: React.FC = () => {
         } catch (err) {
             console.error("Error fetching data:", err);
             setError(
-                err instanceof Error ? err.message : "Failed to load data"
+                err instanceof Error ? err.message : "Failed to load data",
             );
             addToast("Failed to load enrollment data", "error");
         } finally {
@@ -63,7 +63,7 @@ const Enrollments: React.FC = () => {
         // Apply status filter
         if (statusFilter !== "all") {
             filtered = filtered.filter(
-                (enrollment) => enrollment.status === statusFilter
+                (enrollment) => enrollment.status === statusFilter,
             );
         }
 
@@ -72,10 +72,10 @@ const Enrollments: React.FC = () => {
             const searchLower = searchTerm.toLowerCase();
             filtered = filtered.filter((enrollment) => {
                 const employee = employees.find(
-                    (e) => e.id === enrollment.employee_id
+                    (e) => e.id === enrollment.employee_id,
                 );
                 const training = trainings.find(
-                    (t) => t.id === enrollment.training_id
+                    (t) => t.id === enrollment.training_id,
                 );
 
                 return (
@@ -98,9 +98,8 @@ const Enrollments: React.FC = () => {
     const handleCreateEnrollment = useCallback(
         async (enrollmentData: EnrollmentFormData) => {
             try {
-                const newEnrollment = await apiService.createEnrollment(
-                    enrollmentData
-                );
+                const newEnrollment =
+                    await apiService.createEnrollment(enrollmentData);
                 setEnrollments((prev) => [...prev, newEnrollment]);
                 setShowCreatePopup(false);
                 addToast("Enrollment created successfully!", "success");
@@ -114,23 +113,33 @@ const Enrollments: React.FC = () => {
                 throw error;
             }
         },
-        [addToast]
+        [addToast],
     );
 
     // Handle edit enrollment
     const handleEditEnrollment = useCallback(
         async (enrollmentId: number, enrollmentData: EnrollmentFormData) => {
             try {
+                const enrollment = enrollments.find(
+                    (e) => e.id === enrollmentId,
+                );
+
+                // Prevent editing of completed enrollments
+                if (enrollment?.status === "completed") {
+                    addToast("Cannot edit completed enrollments", "warning");
+                    return;
+                }
+
                 const updatedEnrollment = await apiService.updateEnrollment(
                     enrollmentId,
-                    enrollmentData
+                    enrollmentData,
                 );
                 setEnrollments((prev) =>
                     prev.map((enrollment) =>
                         enrollment.id === updatedEnrollment.id
                             ? updatedEnrollment
-                            : enrollment
-                    )
+                            : enrollment,
+                    ),
                 );
                 setShowEditPopup(false);
                 setSelectedEnrollment(null);
@@ -145,16 +154,24 @@ const Enrollments: React.FC = () => {
                 throw error;
             }
         },
-        [addToast]
+        [addToast, enrollments],
     );
 
     // Handle delete enrollment
     const handleDeleteEnrollment = useCallback(
         async (enrollmentId: number) => {
+            const enrollment = enrollments.find((e) => e.id === enrollmentId);
+
+            // Prevent deletion of completed enrollments
+            if (enrollment?.status === "completed") {
+                addToast("Cannot delete completed enrollments", "warning");
+                return;
+            }
+
             try {
                 await apiService.deleteEnrollment(enrollmentId);
                 setEnrollments((prev) =>
-                    prev.filter((enrollment) => enrollment.id !== enrollmentId)
+                    prev.filter((enrollment) => enrollment.id !== enrollmentId),
                 );
                 addToast("Enrollment deleted successfully!", "success");
             } catch (error) {
@@ -166,16 +183,27 @@ const Enrollments: React.FC = () => {
                 addToast(errorMessage, "error");
             }
         },
-        [addToast]
+        [addToast, enrollments],
     );
 
     // Handle update progress
     const handleUpdateProgress = useCallback(
         async (enrollmentId: number, progress: number) => {
+            const enrollment = enrollments.find((e) => e.id === enrollmentId);
+
+            // Prevent updating progress of completed enrollments
+            if (enrollment?.status === "completed") {
+                addToast(
+                    "Cannot update progress of completed enrollments",
+                    "warning",
+                );
+                return;
+            }
+
             try {
                 await apiService.updateEnrollmentProgress(
                     enrollmentId,
-                    progress
+                    progress,
                 );
 
                 // Update local state
@@ -201,7 +229,7 @@ const Enrollments: React.FC = () => {
                             };
                         }
                         return enrollment;
-                    })
+                    }),
                 );
 
                 if (progress === 100) {
@@ -218,12 +246,20 @@ const Enrollments: React.FC = () => {
                 addToast(errorMessage, "error");
             }
         },
-        [addToast]
+        [addToast, enrollments],
     );
 
     // Handle mark as completed
     const handleMarkCompleted = useCallback(
         async (enrollmentId: number) => {
+            const enrollment = enrollments.find((e) => e.id === enrollmentId);
+
+            // Prevent marking already completed enrollments
+            if (enrollment?.status === "completed") {
+                addToast("This enrollment is already completed", "info");
+                return;
+            }
+
             try {
                 await apiService.completeEnrollment(enrollmentId);
 
@@ -237,8 +273,8 @@ const Enrollments: React.FC = () => {
                                   status: "completed",
                                   completed_date: new Date().toISOString(),
                               }
-                            : enrollment
-                    )
+                            : enrollment,
+                    ),
                 );
 
                 addToast("Enrollment marked as completed!", "success");
@@ -251,7 +287,20 @@ const Enrollments: React.FC = () => {
                 addToast(errorMessage, "error");
             }
         },
-        [addToast]
+        [addToast, enrollments],
+    );
+
+    // Handle edit button click
+    const handleEditClick = useCallback(
+        (enrollment: Enrollment) => {
+            if (enrollment.status === "completed") {
+                addToast("Cannot edit completed enrollments", "warning");
+                return;
+            }
+            setSelectedEnrollment(enrollment);
+            setShowEditPopup(true);
+        },
+        [addToast],
     );
 
     // Initial fetch
@@ -285,6 +334,19 @@ const Enrollments: React.FC = () => {
     const getTrainingDuration = (trainingId: number) => {
         const training = trainings.find((t) => t.id === trainingId);
         return training?.duration_hours || 0;
+    };
+
+    // Check if enrollment can be edited
+    const canEditEnrollment = (enrollment: Enrollment) => {
+        return (
+            enrollment.status !== "completed" &&
+            enrollment.status !== "cancelled"
+        );
+    };
+
+    // Check if enrollment can be deleted
+    const canDeleteEnrollment = (enrollment: Enrollment) => {
+        return enrollment.status !== "completed";
     };
 
     return (
@@ -395,7 +457,7 @@ const Enrollments: React.FC = () => {
                             .filter(
                                 (e) =>
                                     e.status === "enrolled" ||
-                                    e.status === "in_progress"
+                                    e.status === "in_progress",
                             )
                             .length.toString()}
                         icon={
@@ -446,14 +508,14 @@ const Enrollments: React.FC = () => {
                                 .filter((e) => e.status === "in_progress")
                                 .reduce(
                                     (acc, e) => acc + (e.progress || 0),
-                                    0
+                                    0,
                                 ) /
                                 Math.max(
                                     enrollments.filter(
-                                        (e) => e.status === "in_progress"
+                                        (e) => e.status === "in_progress",
                                     ).length,
-                                    1
-                                )
+                                    1,
+                                ),
                         )}%`}
                         icon={
                             <svg
@@ -535,24 +597,24 @@ const Enrollments: React.FC = () => {
                                                         <div className="flex items-center">
                                                             <div
                                                                 className={`w-10 h-10 rounded-xl flex items-center justify-center mr-3 ${getEmployeeColor(
-                                                                    enrollment.employee_id
+                                                                    enrollment.employee_id,
                                                                 )}`}
                                                             >
                                                                 <span className="text-white font-bold">
                                                                     {getEmployeeName(
-                                                                        enrollment.employee_id
+                                                                        enrollment.employee_id,
                                                                     ).charAt(0)}
                                                                 </span>
                                                             </div>
                                                             <div>
                                                                 <div className="font-medium text-white group-hover:text-indigo-300 transition-colors">
                                                                     {getEmployeeName(
-                                                                        enrollment.employee_id
+                                                                        enrollment.employee_id,
                                                                     )}
                                                                 </div>
                                                                 <div className="text-sm text-gray-300">
                                                                     {getEmployeeDepartment(
-                                                                        enrollment.employee_id
+                                                                        enrollment.employee_id,
                                                                     )}
                                                                 </div>
                                                             </div>
@@ -562,24 +624,24 @@ const Enrollments: React.FC = () => {
                                                         <div className="flex items-center text-gray-300">
                                                             <div
                                                                 className={`w-8 h-8 rounded-lg flex items-center justify-center mr-2 ${getTrainingColor(
-                                                                    enrollment.training_id
+                                                                    enrollment.training_id,
                                                                 )}`}
                                                             >
                                                                 <span className="text-white text-xs font-bold">
                                                                     {getTrainingName(
-                                                                        enrollment.training_id
+                                                                        enrollment.training_id,
                                                                     ).charAt(0)}
                                                                 </span>
                                                             </div>
                                                             <div>
                                                                 <div className="font-medium text-white">
                                                                     {getTrainingName(
-                                                                        enrollment.training_id
+                                                                        enrollment.training_id,
                                                                     )}
                                                                 </div>
                                                                 <div className="text-sm text-gray-300">
                                                                     {getTrainingDuration(
-                                                                        enrollment.training_id
+                                                                        enrollment.training_id,
                                                                     )}{" "}
                                                                     hours
                                                                 </div>
@@ -590,13 +652,13 @@ const Enrollments: React.FC = () => {
                                                         <div className="space-y-2">
                                                             <span
                                                                 className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
-                                                                    enrollment.status
+                                                                    enrollment.status,
                                                                 )}`}
                                                             >
                                                                 {enrollment.status
                                                                     ?.replace(
                                                                         "_",
-                                                                        " "
+                                                                        " ",
                                                                     )
                                                                     .toUpperCase()}
                                                             </span>
@@ -635,7 +697,7 @@ const Enrollments: React.FC = () => {
                                                                             100,
                                                                         ].map(
                                                                             (
-                                                                                value
+                                                                                value,
                                                                             ) => (
                                                                                 <button
                                                                                     key={
@@ -644,10 +706,19 @@ const Enrollments: React.FC = () => {
                                                                                     onClick={() =>
                                                                                         handleUpdateProgress(
                                                                                             enrollment.id,
-                                                                                            value
+                                                                                            value,
                                                                                         )
                                                                                     }
-                                                                                    className="text-xs px-2 py-1 bg-gray-700/50 hover:bg-gray-600 rounded transition-colors"
+                                                                                    disabled={
+                                                                                        enrollment.status ===
+                                                                                        "completed"
+                                                                                    }
+                                                                                    className={`text-xs px-2 py-1 rounded transition-colors ${
+                                                                                        enrollment.status ===
+                                                                                        "completed"
+                                                                                            ? "bg-gray-800/50 text-gray-500 cursor-not-allowed"
+                                                                                            : "bg-gray-700/50 hover:bg-gray-600"
+                                                                                    }`}
                                                                                 >
                                                                                     {
                                                                                         value
@@ -655,7 +726,7 @@ const Enrollments: React.FC = () => {
 
                                                                                     %
                                                                                 </button>
-                                                                            )
+                                                                            ),
                                                                         )}
                                                                     </div>
                                                                 </div>
@@ -670,7 +741,7 @@ const Enrollments: React.FC = () => {
                                                                 </span>
                                                                 {enrollment.start_date
                                                                     ? new Date(
-                                                                          enrollment.start_date
+                                                                          enrollment.start_date,
                                                                       ).toLocaleDateString()
                                                                     : "Not set"}
                                                             </div>
@@ -680,7 +751,7 @@ const Enrollments: React.FC = () => {
                                                                 </span>
                                                                 {enrollment.end_date
                                                                     ? new Date(
-                                                                          enrollment.end_date
+                                                                          enrollment.end_date,
                                                                       ).toLocaleDateString()
                                                                     : "Not set"}
                                                             </div>
@@ -690,7 +761,7 @@ const Enrollments: React.FC = () => {
                                                                         Completed:{" "}
                                                                     </span>
                                                                     {new Date(
-                                                                        enrollment.completed_date
+                                                                        enrollment.completed_date,
                                                                     ).toLocaleDateString()}
                                                                 </div>
                                                             )}
@@ -699,16 +770,30 @@ const Enrollments: React.FC = () => {
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center space-x-2">
                                                             <button
-                                                                onClick={() => {
-                                                                    setSelectedEnrollment(
-                                                                        enrollment
-                                                                    );
-                                                                    setShowEditPopup(
-                                                                        true
-                                                                    );
-                                                                }}
-                                                                className="p-2 text-gray-400 hover:text-indigo-400 hover:bg-white/5 rounded-lg transition-colors duration-200"
-                                                                title="Edit"
+                                                                onClick={() =>
+                                                                    handleEditClick(
+                                                                        enrollment,
+                                                                    )
+                                                                }
+                                                                disabled={
+                                                                    !canEditEnrollment(
+                                                                        enrollment,
+                                                                    )
+                                                                }
+                                                                className={`p-2 rounded-lg transition-colors duration-200 ${
+                                                                    canEditEnrollment(
+                                                                        enrollment,
+                                                                    )
+                                                                        ? "text-gray-400 hover:text-indigo-400 hover:bg-white/5"
+                                                                        : "text-gray-600 bg-gray-800/30 cursor-not-allowed"
+                                                                }`}
+                                                                title={
+                                                                    canEditEnrollment(
+                                                                        enrollment,
+                                                                    )
+                                                                        ? "Edit"
+                                                                        : "Cannot edit completed or cancelled enrollments"
+                                                                }
                                                             >
                                                                 <svg
                                                                     className="w-5 h-5"
@@ -731,7 +816,7 @@ const Enrollments: React.FC = () => {
                                                                     <button
                                                                         onClick={() =>
                                                                             handleMarkCompleted(
-                                                                                enrollment.id
+                                                                                enrollment.id,
                                                                             )
                                                                         }
                                                                         className="p-2 text-gray-400 hover:text-emerald-400 hover:bg-white/5 rounded-lg transition-colors duration-200"
@@ -755,11 +840,28 @@ const Enrollments: React.FC = () => {
                                                             <button
                                                                 onClick={() =>
                                                                     handleDeleteEnrollment(
-                                                                        enrollment.id
+                                                                        enrollment.id,
                                                                     )
                                                                 }
-                                                                className="p-2 text-gray-400 hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors duration-200"
-                                                                title="Delete"
+                                                                disabled={
+                                                                    !canDeleteEnrollment(
+                                                                        enrollment,
+                                                                    )
+                                                                }
+                                                                className={`p-2 rounded-lg transition-colors duration-200 ${
+                                                                    canDeleteEnrollment(
+                                                                        enrollment,
+                                                                    )
+                                                                        ? "text-gray-400 hover:text-red-400 hover:bg-white/5"
+                                                                        : "text-gray-600 bg-gray-800/30 cursor-not-allowed"
+                                                                }`}
+                                                                title={
+                                                                    canDeleteEnrollment(
+                                                                        enrollment,
+                                                                    )
+                                                                        ? "Delete"
+                                                                        : "Cannot delete completed enrollments"
+                                                                }
                                                             >
                                                                 <svg
                                                                     className="w-5 h-5"
@@ -778,7 +880,7 @@ const Enrollments: React.FC = () => {
                                                         </div>
                                                     </td>
                                                 </tr>
-                                            )
+                                            ),
                                         )}
                                     </tbody>
                                 </table>

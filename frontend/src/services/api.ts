@@ -31,7 +31,7 @@ interface FetchOptions extends RequestInit {
 class ApiService {
     private async fetchWithError<T>(
         url: string,
-        options: FetchOptions = {}
+        options: FetchOptions = {},
     ): Promise<T> {
         // Destructure to separate custom options from fetch options
         const { skipAuth = false, ...fetchOptions } = options;
@@ -78,7 +78,7 @@ class ApiService {
         // Handle forbidden access (403)
         if (response.status === 403) {
             throw new Error(
-                "You do not have permission to access this resource."
+                "You do not have permission to access this resource.",
             );
         }
 
@@ -112,7 +112,7 @@ class ApiService {
                     method: "POST",
                     skipAuth: true,
                     body: JSON.stringify({ email, password }),
-                }
+                },
             );
 
             // Store token in localStorage
@@ -156,9 +156,8 @@ class ApiService {
 
     // Employees (protected)
     async getEmployees(): Promise<Employee[]> {
-        const data = await this.fetchWithError<EmployeeListResponse>(
-            "/employees"
-        );
+        const data =
+            await this.fetchWithError<EmployeeListResponse>("/employees");
         return data.employees || [];
     }
 
@@ -188,9 +187,8 @@ class ApiService {
 
     // Departments (protected)
     async getDepartments(): Promise<Department[]> {
-        const data = await this.fetchWithError<DepartmentListResponses>(
-            "/departments"
-        );
+        const data =
+            await this.fetchWithError<DepartmentListResponses>("/departments");
         return data.departments || [];
     }
 
@@ -203,7 +201,7 @@ class ApiService {
     }
 
     async updateDepartment(
-        departmentData: DepartmentFormData & { id: number }
+        departmentData: DepartmentFormData & { id: number },
     ): Promise<Department> {
         return this.fetchWithError(`/departments/${departmentData.id}`, {
             method: "PUT",
@@ -219,9 +217,8 @@ class ApiService {
 
     // Trainings (protected)
     async getTrainings(): Promise<Training[]> {
-        const data = await this.fetchWithError<TrainingListResponse>(
-            "/trainings"
-        );
+        const data =
+            await this.fetchWithError<TrainingListResponse>("/trainings");
         return data.trainings || [];
     }
 
@@ -237,7 +234,7 @@ class ApiService {
     }
 
     async updateTraining(
-        trainingData: TrainingFormData & { id: number }
+        trainingData: TrainingFormData & { id: number },
     ): Promise<Training> {
         // Remove id from the request body since it's in the URL
         const { id, ...updateData } = trainingData;
@@ -262,7 +259,7 @@ class ApiService {
     }
 
     async createEnrollment(
-        enrollmentData: EnrollmentFormData
+        enrollmentData: EnrollmentFormData,
     ): Promise<Enrollment> {
         return this.fetchWithError<Enrollment>("/enrollments", {
             method: "POST",
@@ -272,7 +269,7 @@ class ApiService {
 
     async updateEnrollment(
         enrollmentId: number,
-        enrollmentData: EnrollmentFormData
+        enrollmentData: EnrollmentFormData,
     ): Promise<Enrollment> {
         return this.fetchWithError<Enrollment>(`/enrollments/${enrollmentId}`, {
             method: "PUT",
@@ -282,13 +279,13 @@ class ApiService {
 
     async updateEnrollmentProgress(
         enrollmentId: number,
-        progress: number
+        progress: number,
     ): Promise<Enrollment> {
         return this.fetchWithError<Enrollment>(
             `/enrollments/${enrollmentId}/progress?progress=${progress}`,
             {
                 method: "PATCH",
-            }
+            },
         );
     }
 
@@ -297,7 +294,7 @@ class ApiService {
             `/enrollments/${enrollmentId}/complete`,
             {
                 method: "POST",
-            }
+            },
         );
     }
 
@@ -321,21 +318,21 @@ class ApiService {
 
     // Compliance Report Methods (protected)
     async getComplianceReport(
-        filters: ReportFilters
+        filters: ReportFilters,
     ): Promise<ComplianceMetrics> {
         const response = await this.fetchWithError<ComplianceMetrics>(
             "/api/compliance/report",
             {
                 method: "POST",
                 body: JSON.stringify(filters),
-            }
+            },
         );
         return response;
     }
 
     async exportComplianceReport(
         filters: ReportFilters,
-        format: "pdf" | "excel"
+        format: "pdf" | "excel",
     ): Promise<void> {
         const response = await fetch(
             `${API_BASE}/api/compliance/export/${format}`,
@@ -346,7 +343,7 @@ class ApiService {
                     Authorization: `Bearer ${this.getToken()}`,
                 },
                 body: JSON.stringify(filters),
-            }
+            },
         );
 
         if (!response.ok) {
