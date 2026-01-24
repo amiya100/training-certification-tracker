@@ -500,19 +500,26 @@ const Enrollments: React.FC = () => {
                         }
                         bgColor="bg-green-500"
                     />
-
                     <StatCard
                         title="Avg Progress"
                         value={`${Math.round(
                             enrollments
-                                .filter((e) => e.status === "in_progress")
+                                .filter(
+                                    (e) =>
+                                        e.status === "enrolled" ||
+                                        e.status === "in_progress" ||
+                                        e.status === "completed",
+                                )
                                 .reduce(
                                     (acc, e) => acc + (e.progress || 0),
                                     0,
                                 ) /
                                 Math.max(
                                     enrollments.filter(
-                                        (e) => e.status === "in_progress",
+                                        (e) =>
+                                            e.status === "enrolled" ||
+                                            e.status === "in_progress" ||
+                                            e.status === "completed",
                                     ).length,
                                     1,
                                 ),
