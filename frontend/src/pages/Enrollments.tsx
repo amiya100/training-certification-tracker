@@ -976,7 +976,7 @@ const EnrollmentsSkeleton = () => (
             <div className="h-4 bg-gray-700/50 rounded-xl w-1/3 mt-2"></div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[...Array(4)].map((_, i) => (
                 <div
                     key={i}
