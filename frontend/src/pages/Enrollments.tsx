@@ -432,7 +432,7 @@ const Enrollments: React.FC = () => {
                 )}
 
                 {/* Stats Summary */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
                     <StatCard
                         title="Total Enrollments"
                         value={enrollments.length.toString()}
@@ -499,6 +499,36 @@ const Enrollments: React.FC = () => {
                             </svg>
                         }
                         bgColor="bg-green-500"
+                    />
+
+                    <StatCard
+                        title="Avg Progress"
+                        value={`${Math.round(
+                            enrollments
+                                .filter((e) => e.status === "in_progress")
+                                .reduce(
+                                    (acc, e) => acc + (e.progress || 0),
+                                    0,
+                                ) /
+                                Math.max(
+                                    enrollments.filter(
+                                        (e) => e.status === "in_progress",
+                                    ).length,
+                                    1,
+                                ),
+                        )}%`}
+                        icon={
+                            <svg
+                                className="w-6 h-6 text-white"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <circle cx="12" cy="12" r="10" />
+                                <polyline points="12 6 12 12 16 14" />
+                            </svg>
+                        }
+                        bgColor="bg-blue-500"
                     />
                 </div>
 
@@ -976,7 +1006,7 @@ const EnrollmentsSkeleton = () => (
             <div className="h-4 bg-gray-700/50 rounded-xl w-1/3 mt-2"></div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
             {[...Array(4)].map((_, i) => (
                 <div
                     key={i}
